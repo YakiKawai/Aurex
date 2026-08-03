@@ -5,7 +5,7 @@
 мод за минуты, не разбирая diff вручную.
 
 Главный принцип: врезок должно быть как можно меньше, каждая из них состоит из
-одного вызова `AurexHooks` и не содержит логики. Вся логика живёт в `org.aurex`.
+одного вызова фасада из `org.aurex` и не содержит логики. Вся логика живёт в `org.aurex`.
 
 Быстрая проверка, что список актуален:
 
@@ -81,3 +81,90 @@ if (org.aurex.core.AurexHooks.shouldDropRequest(currentAccount, object)) {
 
 Список типов запросов, которые фильтруются, см. в
 `org/aurex/features/ghost/GhostRequestFilter.java`.
+
+---
+
+## 3. Фон шапки собственного профиля
+
+**Файл:** `TMessagesProj/src/main/java/org/telegram/ui/ProfileActivity.java`
+
+Все шесть врезок — вызовы фасада `org.aurex.features.profilebg.ProfileBackgrounds`
+и рисовалки `ProfileBackgroundDrawer`. Логики в апстриме нет.
+
+### 3.1 Константы id пунктов меню
+
+После `private final static int disable_no_forwards = 47;`:
+
+```java
+// AUREX >>> profile background
+private final static int aurex_profile_background = 1001;
+private final static int aurex_profile_background_remove = 1002;
+// AUREX <<<
+```
+
+### 3.2 Поле в `TopView`
+
+Рядом с `private Paint paint = new Paint();`:
+
+```java
+// AUREX >>> profile background
+private final org.aurex.features.profilebg.ProfileBackgroundDrawer aurexProfileBackground =
+    new org.aurex.features.profilebg.ProfileBackgroundDrawer(this);
+// AUREX <<<
+```
+
+### 3.3 Отрисовка в `TopView.onDraw`
+
+Сразу после блока `if (progressToGradient > 0) { ... }`:
+
+```java
+// AUREX >>> profile background
+if (myProfile) {
+    canvas.save();
+    canvas.clipRect(0, 0, getMeasuredWidth(), y1);
+    aurexProfileBackground.draw(canvas, currentAccount, getMeasuredWidth(), y1, 1f);
+    canvas.restore();
+}
+// AUREX <<<
+```
+
+### 3.4 Пункты меню трёх точек
+
+В конце `createActionBarMenu(boolean animated)`, после блока с `logout`:
+
+```java
+// AUREX >>> profile background
+if (myProfile) {
+    org.aurex.features.profilebg.ProfileBackgrounds.addMenuItems(this, otherItem, aurex_profile_background, aurex_profile_background_remove, () -> {
+        if (topView != null) {
+            topView.invalidate();
+        }
+    });
+}
+// AUREX <<<
+```
+
+### 3.5 Обработка клика в `onItemClick`
+
+```java
+// AUREX >>> profile background
+} else if (id == aurex_profile_background || id == aurex_profile_background_remove) {
+    org.aurex.features.profilebg.ProfileBackgrounds.onMenuItemClick(ProfileActivity.this, id);
+// AUREX <<<
+```
+
+### 3.6 Результат системной камеры / системной галереи
+
+В конец `onActivityResultFragment(...)`, рядом с вызовом `imageUpdater.onActivityResult(...)`:
+
+```java
+// AUREX >>> profile background
+org.aurex.features.profilebg.ProfileBackgrounds.onActivityResult(this, requestCode, resultCode, data);
+// AUREX <<<
+```
+
+**Почему отдельный `ImageUpdater`, а не штатный из `ProfileActivity`.** Штатный
+принадлежит аватару и его delegate — сам `ProfileActivity`. Подмена delegate на время
+выбора фона означала бы, что при отмене выбора следующая смена аватара ушла бы
+в фон профиля. Свой экземпляр полностью изолирован и при этом даёт ровно тот же
+интерфейс выбора фото.
