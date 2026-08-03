@@ -21,15 +21,16 @@ import java.util.List;
  *    переносить при каждом обновлении апстрима;
  *  - AyuGram включает allowMainThreadQueries(), то есть ходит в базу из UI-потока;
  *  - Telegram и так работает с SQLite напрямую, отдельный фреймворк здесь лишний.
- * Набор таблиц и запросов при этом полностью повторяет AyuGram.
+ * Набор запросов при этом повторяет DAO AyuGram один в один.
  *
  * Все методы этого класса блокирующие: вызывать их следует из фонового потока
- * (Utilities.globalQueue / DispatchQueue), а не из UI.
+ * (см. {@link SpyController}), а не из UI.
  */
 public final class SpyStorage {
 
     private static final String DATABASE_NAME = "aurex_spy.db";
-    private static final int DATABASE_VERSION = 1;
+    /** v2: вместо document/thumbs/document_attributes/mime_type — одно поле media. */
+    private static final int DATABASE_VERSION = 2;
 
     private static final String TABLE_MESSAGE = "spy_message";
     private static final String TABLE_REACTION = "spy_reaction";
@@ -323,10 +324,7 @@ public final class SpyStorage {
         values.put("media_path", message.mediaPath);
         values.put("thumb_path", message.thumbPath);
         values.put("document_type", message.documentType);
-        values.put("document", message.document);
-        values.put("thumbs", message.thumbs);
-        values.put("document_attributes", message.documentAttributes);
-        values.put("mime_type", message.mimeType);
+        values.put("media", message.media);
         try {
             long rowId = helper.getWritableDatabase().insert(TABLE_MESSAGE, null, values);
             message.rowId = rowId;
@@ -381,10 +379,7 @@ public final class SpyStorage {
         message.mediaPath = cursor.getString(cursor.getColumnIndexOrThrow("media_path"));
         message.thumbPath = cursor.getString(cursor.getColumnIndexOrThrow("thumb_path"));
         message.documentType = cursor.getInt(cursor.getColumnIndexOrThrow("document_type"));
-        message.document = cursor.getBlob(cursor.getColumnIndexOrThrow("document"));
-        message.thumbs = cursor.getBlob(cursor.getColumnIndexOrThrow("thumbs"));
-        message.documentAttributes = cursor.getBlob(cursor.getColumnIndexOrThrow("document_attributes"));
-        message.mimeType = cursor.getString(cursor.getColumnIndexOrThrow("mime_type"));
+        message.media = cursor.getBlob(cursor.getColumnIndexOrThrow("media"));
         return message;
     }
 
@@ -433,10 +428,7 @@ public final class SpyStorage {
                     + "media_path TEXT,"
                     + "thumb_path TEXT,"
                     + "document_type INTEGER NOT NULL DEFAULT 0,"
-                    + "document BLOB,"
-                    + "thumbs BLOB,"
-                    + "document_attributes BLOB,"
-                    + "mime_type TEXT)");
+                    + "media BLOB)");
             db.execSQL("CREATE INDEX idx_spy_message_lookup ON " + TABLE_MESSAGE
                     + " (kind, user_id, dialog_id, message_id)");
             db.execSQL("CREATE INDEX idx_spy_message_range ON " + TABLE_MESSAGE
@@ -457,8 +449,13 @@ public final class SpyStorage {
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            // Схема версии 1. Миграции добавляются здесь по мере развития модуля;
-            // данные пользователя не удаляем.
+            if (oldVersion < 2) {
+                // Схема v1 существовала только в ветке разработки и никогда ничего не хранила:
+                // перехват сообщений ещё не был подключён, поэтому терять нечего.
+                db.execSQL("DROP TABLE IF EXISTS " + TABLE_REACTION);
+                db.execSQL("DROP TABLE IF EXISTS " + TABLE_MESSAGE);
+                onCreate(db);
+            }
         }
     }
 }
