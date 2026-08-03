@@ -18,13 +18,17 @@ import java.util.Locale;
 /**
  * Экран "Режим призрака".
  *
- * Верхняя строка — это группа: слева круглая галочка (включает/выключает сразу весь
- * набор), справа счётчик включённых пунктов и стрелка, сворачивающая список.
- * Так экран не пугает десятком тумблеров сразу, но при этом даёт тонкую настройку.
+ * Поведение повторяет AyuGram (AyuGramPreferencesActivity):
+ *  - группа по умолчанию свёрнута (у них ghostModeMenuExpanded = false);
+ *  - нажатие на строку раскрывает/сворачивает список;
+ *  - нажатие на сам переключатель включает/выключает весь режим (у них — callback
+ *    в setCollapseArrow, вызывающий AyuConfig.toggleGhostMode());
+ *  - подпункты — круглые чекбоксы с отступом (у них CheckBoxCell + setPad(1));
+ *  - справа на шапке группы — счётчик вида "N/M".
  *
  * Настройки хранятся в положительной логике ("отправлять прочтения"), а показываются
- * в отрицательной ("Не читать сообщения"). Инверсия собрана в одном месте — в таблице
- * Option ниже, чтобы её нельзя было случайно применить дважды.
+ * в отрицательной ("Не читать сообщения") — точно так же, как в AyuGram. Инверсия
+ * собрана в одном месте, чтобы её нельзя было случайно применить дважды.
  */
 public class AurexGhostSettingsActivity extends UniversalFragment {
 
@@ -32,7 +36,6 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
     private static final int BTN_READ_AFTER_ACTION = 2;
     private static final int OPTION_ID_OFFSET = 100;
 
-    /** Пункт группы: настройка, её заголовок и способ отображения. */
     private static final class Option {
         final BoolPref pref;
         final int titleRes;
@@ -63,7 +66,8 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
             new Option(AurexFeatures.AUTO_OFFLINE, R.string.AurexAutoOffline, false)
     };
 
-    private boolean collapsed;
+    /** Как в AyuGram: при входе на экран список свёрнут. */
+    private boolean collapsed = true;
 
     @Override
     protected CharSequence getTitle() {
@@ -82,7 +86,7 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
 
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
-        items.add(UItem.asHeader(getString(R.string.AurexGhostMode)));
+        items.add(UItem.asHeader(getString(R.string.AurexGhostEssentials)));
         items.add(UItem.asRoundGroupCheckbox(
                         GROUP_GHOST,
                         getString(R.string.AurexGhostMode),
@@ -90,9 +94,9 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
                 )
                 .setChecked(GhostMode.isEnabled())
                 .setCollapsed(collapsed)
+                // Нажатие по самому переключателю — включить/выключить весь режим.
                 .setClickCallback(v -> {
-                    // Стрелка сворачивает список, не трогая сами настройки.
-                    collapsed = !collapsed;
+                    GhostMode.toggle();
                     listView.adapter.update(true);
                 }));
 
@@ -103,7 +107,7 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
                         .setPad(1));
             }
         }
-        items.add(UItem.asShadow(getString(R.string.AurexGhostEssentialsInfo)));
+        items.add(UItem.asShadow(getString(R.string.AurexGhostModeInfo)));
 
         items.add(UItem.asSwitch(BTN_READ_AFTER_ACTION, getString(R.string.AurexReadAfterAction))
                 .setChecked(AurexFeatures.READ_AFTER_ACTION.get()));
@@ -113,7 +117,8 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
     @Override
     protected void onClick(UItem item, View view, int position, float x, float y) {
         if (item.id == GROUP_GHOST) {
-            GhostMode.toggle();
+            // Нажатие по строке — только раскрытие списка, как в AyuGram.
+            collapsed = !collapsed;
         } else if (item.id == BTN_READ_AFTER_ACTION) {
             AurexFeatures.READ_AFTER_ACTION.toggle();
         } else if (item.id >= OPTION_ID_OFFSET && item.id < OPTION_ID_OFFSET + OPTIONS.length) {
@@ -121,8 +126,6 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
         } else {
             return;
         }
-        // Один источник правды: перерисовываем список из текущих значений настроек,
-        // а не двигаем состояние ячеек руками.
         listView.adapter.update(true);
     }
 
