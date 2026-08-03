@@ -123,6 +123,11 @@ android {
                 arguments '-DANDROID_STL=c++_static', '-DANDROID_PLATFORM=android-21' //, '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
             }
         }
+
+        def appIdProp = getProps("APP_ID")
+        def appHashProp = getProps("APP_HASH")
+        buildConfigField "int", "APP_ID", (appIdProp != null && !appIdProp.trim().isEmpty()) ? appIdProp.trim() : "4"
+        buildConfigField "String", "APP_HASH", "\"" + ((appHashProp != null && !appHashProp.trim().isEmpty()) ? appHashProp.trim() : "014b35b6184100b085b0d0572f9b5103") + "\""
     }
 
     buildTypes {

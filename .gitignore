@@ -14,3 +14,8 @@ TMessagesProj_AppHockeyApp/afat/
 TMessagesProj_AppStandalone/afat/
 TMessagesProj_AppHuawei/afat/
 TMessagesProj/jni/ffmpeg/build_android
+google-services.json
+TMessagesProj/google-services.json
+*.keystore
+*.jks
+/docs/private/
