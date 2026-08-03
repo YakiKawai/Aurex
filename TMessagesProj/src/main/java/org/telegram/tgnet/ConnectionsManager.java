@@ -800,6 +800,9 @@ public class ConnectionsManager extends BaseController {
             final TLObject message = TLClassStore.Instance().TLdeserialize(buff, constructor, true);
             FileLog.dumpUnparsedMessage(message, messageId, currentAccount);
             if (message instanceof TLRPC.Updates) {
+                // AUREX >>> spy-mode
+                org.aurex.core.AurexHooks.onUpdatesReceived(currentAccount, message);
+                // AUREX <<<
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("java received " + message);
                 }
