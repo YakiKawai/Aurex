@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Строки мода Aurex.
-    ПРАВИЛО: здесь допустимы ТОЛЬКО новые ключи с префиксом Aurex.
--->
 <resources>
     <string name="AurexSettings">Aurex</string>
     <string name="AurexSettingsInfo">Mod settings and features</string>
     <string name="AurexSettingsGeneral">General</string>
+    <string name="AurexSettingsCategories">Categories</string>
     <string name="AurexStateOn">On</string>
     <string name="AurexStateOff">Off</string>
 
@@ -21,4 +18,5 @@
     <string name="AurexDontSendUploadProgress">Don\'t send upload progress</string>
     <string name="AurexAutoOffline">Automatic offline</string>
     <string name="AurexReadAfterAction">Read on actions</string>
+    <string name="AurexReadAfterActionInfo">Marks a message as read when you reply to it or react to it.</string>
 </resources>

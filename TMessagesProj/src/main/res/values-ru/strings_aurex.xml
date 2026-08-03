@@ -2,19 +2,21 @@
 <resources>
     <string name="AurexSettings">Aurex</string>
     <string name="AurexSettingsInfo">Настройки и функции мода</string>
-    <string name="AurexSettingsGeneral">Основные</string>
+    <string name="AurexSettingsGeneral">Общее</string>
+    <string name="AurexSettingsCategories">Категории</string>
     <string name="AurexStateOn">Вкл.</string>
     <string name="AurexStateOff">Выкл.</string>
 
     <string name="AurexGhostMode">Режим призрака</string>
-    <string name="AurexGhostModeInfo">Скрывает вашу активность: отметки о прочтении, статус «онлайн» и «печатает» не отправляются на сервер.</string>
+    <string name="AurexGhostModeInfo">Скрывает вашу активность: прочтения, статус «онлайн» и «печатает» не отправляются на сервер.</string>
     <string name="AurexGhostEssentials">Основное</string>
-    <string name="AurexGhostEssentialsInfo">Локально чаты по-прежнему помечаются прочитанными — просто собеседник об этом не узнаёт.</string>
+    <string name="AurexGhostEssentialsInfo">Чаты по-прежнему отмечаются прочитанными локально — собеседник об этом просто не узнает.</string>
     <string name="AurexDontReadMessages">Не читать сообщения</string>
     <string name="AurexDontReadStories">Не читать истории</string>
-    <string name="AurexDontSendOnline">Не отправлять статус «онлайн»</string>
-    <string name="AurexDontSendTyping">Не отправлять статус «печатает»</string>
-    <string name="AurexDontSendUploadProgress">Не отправлять прогресс загрузки</string>
-    <string name="AurexAutoOffline">Автоматический офлайн</string>
+    <string name="AurexDontSendOnline">Не отправлять «онлайн»</string>
+    <string name="AurexDontSendTyping">Не отправлять «печатает»</string>
+    <string name="AurexDontSendUploadProgress">Не отправлять прогресс отправки</string>
+    <string name="AurexAutoOffline">Автоматический «офлайн»</string>
     <string name="AurexReadAfterAction">Читать при действиях</string>
+    <string name="AurexReadAfterActionInfo">Отмечает сообщение прочитанным, когда вы отвечаете на него или ставите реакцию.</string>
 </resources>

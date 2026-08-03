@@ -1,265 +1,133 @@
 package org.aurex.ui;
 
-import android.content.Context;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
+import static org.telegram.messenger.LocaleController.getString;
 
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import android.view.View;
 
 import org.aurex.core.AurexFeatures;
 import org.aurex.core.BoolPref;
 import org.aurex.features.ghost.GhostMode;
-import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
-import org.telegram.ui.ActionBar.ActionBar;
-import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.HeaderCell;
-import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Cells.TextInfoPrivacyCell;
-import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalFragment;
+
+import java.util.ArrayList;
+import java.util.Locale;
 
 /**
- * Экран раздела "Режим призрака".
+ * Экран "Режим призрака".
  *
- * Главный переключатель выставляет весь набор настроек сразу, отдельные тумблеры
- * позволяют настроить поведение точечно — как в AyuGram.
+ * Верхняя строка — это группа: слева круглая галочка (включает/выключает сразу весь
+ * набор), справа счётчик включённых пунктов и стрелка, сворачивающая список.
+ * Так экран не пугает десятком тумблеров сразу, но при этом даёт тонкую настройку.
  *
  * Настройки хранятся в положительной логике ("отправлять прочтения"), а показываются
- * в отрицательной ("Не читать сообщения"), поэтому инверсия собрана здесь и только здесь.
+ * в отрицательной ("Не читать сообщения"). Инверсия собрана в одном месте — в таблице
+ * Option ниже, чтобы её нельзя было случайно применить дважды.
  */
-public class AurexGhostSettingsActivity extends BaseFragment {
+public class AurexGhostSettingsActivity extends UniversalFragment {
 
-    private int rowCount;
-    private int ghostToggleRow;
-    private int ghostToggleInfoRow;
-    private int essentialsHeaderRow;
-    private int dontReadMessagesRow;
-    private int dontReadStoriesRow;
-    private int dontSendOnlineRow;
-    private int dontSendTypingRow;
-    private int dontSendUploadProgressRow;
-    private int autoOfflineRow;
-    private int readAfterActionRow;
-    private int essentialsInfoRow;
+    private static final int GROUP_GHOST = 1;
+    private static final int BTN_READ_AFTER_ACTION = 2;
+    private static final int OPTION_ID_OFFSET = 100;
 
-    private RecyclerListView listView;
-    private ListAdapter listAdapter;
+    /** Пункт группы: настройка, её заголовок и способ отображения. */
+    private static final class Option {
+        final BoolPref pref;
+        final int titleRes;
+        /** true — строка показывает значение настройки наоборот ("Не читать"). */
+        final boolean inverted;
+
+        Option(BoolPref pref, int titleRes, boolean inverted) {
+            this.pref = pref;
+            this.titleRes = titleRes;
+            this.inverted = inverted;
+        }
+
+        boolean isChecked() {
+            return inverted != pref.get();
+        }
+
+        void toggle() {
+            pref.set(!pref.get());
+        }
+    }
+
+    private static final Option[] OPTIONS = {
+            new Option(AurexFeatures.SEND_READ_PACKETS, R.string.AurexDontReadMessages, true),
+            new Option(AurexFeatures.SEND_READ_STORIES, R.string.AurexDontReadStories, true),
+            new Option(AurexFeatures.SEND_ONLINE_PACKETS, R.string.AurexDontSendOnline, true),
+            new Option(AurexFeatures.SEND_TYPING_PACKETS, R.string.AurexDontSendTyping, true),
+            new Option(AurexFeatures.SEND_UPLOAD_PROGRESS, R.string.AurexDontSendUploadProgress, true),
+            new Option(AurexFeatures.AUTO_OFFLINE, R.string.AurexAutoOffline, false)
+    };
+
+    private boolean collapsed;
 
     @Override
-    public boolean onFragmentCreate() {
-        updateRows();
-        return super.onFragmentCreate();
+    protected CharSequence getTitle() {
+        return getString(R.string.AurexGhostMode);
     }
 
-    private void updateRows() {
-        rowCount = 0;
-        ghostToggleRow = rowCount++;
-        ghostToggleInfoRow = rowCount++;
-        essentialsHeaderRow = rowCount++;
-        dontReadMessagesRow = rowCount++;
-        dontReadStoriesRow = rowCount++;
-        dontSendOnlineRow = rowCount++;
-        dontSendTypingRow = rowCount++;
-        dontSendUploadProgressRow = rowCount++;
-        autoOfflineRow = rowCount++;
-        readAfterActionRow = rowCount++;
-        essentialsInfoRow = rowCount++;
+    private int checkedCount() {
+        int count = 0;
+        for (Option option : OPTIONS) {
+            if (option.isChecked()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @Override
-    public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString(R.string.AurexGhostMode));
-        if (AndroidUtilities.isTablet()) {
-            actionBar.setOccupyStatusBar(false);
-        }
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
-            @Override
-            public void onItemClick(int id) {
-                if (id == -1) {
-                    finishFragment();
-                }
+    protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader(getString(R.string.AurexGhostMode)));
+        items.add(UItem.asRoundGroupCheckbox(
+                        GROUP_GHOST,
+                        getString(R.string.AurexGhostMode),
+                        String.format(Locale.US, "%d/%d", checkedCount(), OPTIONS.length)
+                )
+                .setChecked(GhostMode.isEnabled())
+                .setCollapsed(collapsed)
+                .setClickCallback(v -> {
+                    // Стрелка сворачивает список, не трогая сами настройки.
+                    collapsed = !collapsed;
+                    listView.adapter.update(true);
+                }));
+
+        if (!collapsed) {
+            for (int i = 0; i < OPTIONS.length; i++) {
+                items.add(UItem.asRoundCheckbox(OPTION_ID_OFFSET + i, getString(OPTIONS[i].titleRes))
+                        .setChecked(OPTIONS[i].isChecked())
+                        .setPad(1));
             }
-        });
+        }
+        items.add(UItem.asShadow(getString(R.string.AurexGhostEssentialsInfo)));
 
-        FrameLayout frameLayout = new FrameLayout(context);
-        frameLayout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
-        fragmentView = frameLayout;
-
-        listAdapter = new ListAdapter(context);
-
-        listView = new RecyclerListView(context);
-        listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
-        listView.setVerticalScrollBarEnabled(false);
-        listView.setAdapter(listAdapter);
-        listView.setOnItemClickListener((view, position) -> onRowClick(view, position));
-        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-
-        return fragmentView;
+        items.add(UItem.asSwitch(BTN_READ_AFTER_ACTION, getString(R.string.AurexReadAfterAction))
+                .setChecked(AurexFeatures.READ_AFTER_ACTION.get()));
+        items.add(UItem.asShadow(getString(R.string.AurexReadAfterActionInfo)));
     }
 
-    private void onRowClick(View view, int position) {
-        if (position == ghostToggleRow) {
-            boolean enabled = GhostMode.toggle();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(enabled);
-            }
-            // Главный переключатель меняет все остальные строки.
-            if (listAdapter != null) {
-                listAdapter.notifyItemRangeChanged(essentialsHeaderRow, rowCount - essentialsHeaderRow);
-            }
+    @Override
+    protected void onClick(UItem item, View view, int position, float x, float y) {
+        if (item.id == GROUP_GHOST) {
+            GhostMode.toggle();
+        } else if (item.id == BTN_READ_AFTER_ACTION) {
+            AurexFeatures.READ_AFTER_ACTION.toggle();
+        } else if (item.id >= OPTION_ID_OFFSET && item.id < OPTION_ID_OFFSET + OPTIONS.length) {
+            OPTIONS[item.id - OPTION_ID_OFFSET].toggle();
+        } else {
             return;
         }
-
-        BoolPref pref = prefForRow(position);
-        if (pref == null) {
-            return;
-        }
-        boolean value = pref.toggle();
-        if (view instanceof TextCheckCell) {
-            // Строки "Не ..." показывают инверсию хранимого значения.
-            ((TextCheckCell) view).setChecked(isInverted(position) != value);
-        }
-        if (listAdapter != null) {
-            listAdapter.notifyItemChanged(ghostToggleRow);
-        }
+        // Один источник правды: перерисовываем список из текущих значений настроек,
+        // а не двигаем состояние ячеек руками.
+        listView.adapter.update(true);
     }
 
-    private BoolPref prefForRow(int position) {
-        if (position == dontReadMessagesRow) {
-            return AurexFeatures.SEND_READ_PACKETS;
-        }
-        if (position == dontReadStoriesRow) {
-            return AurexFeatures.SEND_READ_STORIES;
-        }
-        if (position == dontSendOnlineRow) {
-            return AurexFeatures.SEND_ONLINE_PACKETS;
-        }
-        if (position == dontSendTypingRow) {
-            return AurexFeatures.SEND_TYPING_PACKETS;
-        }
-        if (position == dontSendUploadProgressRow) {
-            return AurexFeatures.SEND_UPLOAD_PROGRESS;
-        }
-        if (position == autoOfflineRow) {
-            return AurexFeatures.AUTO_OFFLINE;
-        }
-        if (position == readAfterActionRow) {
-            return AurexFeatures.READ_AFTER_ACTION;
-        }
-        return null;
-    }
-
-    /** Строки вида "Не читать ..." показывают значение наоборот. */
-    private boolean isInverted(int position) {
-        return position == dontReadMessagesRow
-                || position == dontReadStoriesRow
-                || position == dontSendOnlineRow
-                || position == dontSendTypingRow
-                || position == dontSendUploadProgressRow;
-    }
-
-    private static final int VIEW_TYPE_CHECK = 0;
-    private static final int VIEW_TYPE_HEADER = 1;
-    private static final int VIEW_TYPE_INFO = 2;
-
-    private class ListAdapter extends RecyclerListView.SelectionAdapter {
-
-        private final Context context;
-
-        public ListAdapter(Context context) {
-            this.context = context;
-        }
-
-        @Override
-        public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            return holder.getItemViewType() == VIEW_TYPE_CHECK;
-        }
-
-        @Override
-        public int getItemCount() {
-            return rowCount;
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            if (position == essentialsHeaderRow) {
-                return VIEW_TYPE_HEADER;
-            }
-            if (position == ghostToggleInfoRow || position == essentialsInfoRow) {
-                return VIEW_TYPE_INFO;
-            }
-            return VIEW_TYPE_CHECK;
-        }
-
-        @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view;
-            if (viewType == VIEW_TYPE_HEADER) {
-                view = new HeaderCell(context);
-                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-            } else if (viewType == VIEW_TYPE_CHECK) {
-                view = new TextCheckCell(context);
-                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-            } else {
-                view = new TextInfoPrivacyCell(context);
-            }
-            view.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
-            return new RecyclerListView.Holder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-            int viewType = holder.getItemViewType();
-            if (viewType == VIEW_TYPE_HEADER) {
-                ((HeaderCell) holder.itemView).setText(LocaleController.getString(R.string.AurexGhostEssentials));
-                return;
-            }
-            if (viewType == VIEW_TYPE_INFO) {
-                TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                if (position == ghostToggleInfoRow) {
-                    cell.setText(LocaleController.getString(R.string.AurexGhostModeInfo));
-                } else {
-                    cell.setText(LocaleController.getString(R.string.AurexGhostEssentialsInfo));
-                }
-                return;
-            }
-
-            TextCheckCell cell = (TextCheckCell) holder.itemView;
-            if (position == ghostToggleRow) {
-                cell.setTextAndCheck(LocaleController.getString(R.string.AurexGhostMode), GhostMode.isEnabled(), false);
-                return;
-            }
-
-            BoolPref pref = prefForRow(position);
-            if (pref == null) {
-                return;
-            }
-            boolean checked = isInverted(position) != pref.get();
-            int titleRes;
-            if (position == dontReadMessagesRow) {
-                titleRes = R.string.AurexDontReadMessages;
-            } else if (position == dontReadStoriesRow) {
-                titleRes = R.string.AurexDontReadStories;
-            } else if (position == dontSendOnlineRow) {
-                titleRes = R.string.AurexDontSendOnline;
-            } else if (position == dontSendTypingRow) {
-                titleRes = R.string.AurexDontSendTyping;
-            } else if (position == dontSendUploadProgressRow) {
-                titleRes = R.string.AurexDontSendUploadProgress;
-            } else if (position == autoOfflineRow) {
-                titleRes = R.string.AurexAutoOffline;
-            } else {
-                titleRes = R.string.AurexReadAfterAction;
-            }
-            boolean divider = position != readAfterActionRow;
-            cell.setTextAndCheck(LocaleController.getString(titleRes), checked, divider);
-        }
+    @Override
+    protected boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        return false;
     }
 }
