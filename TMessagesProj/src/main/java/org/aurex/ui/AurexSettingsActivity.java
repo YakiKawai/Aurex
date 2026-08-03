@@ -1,148 +1,66 @@
 package org.aurex.ui;
 
+import static org.telegram.messenger.LocaleController.getString;
+
 import android.content.Context;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
-
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import org.aurex.core.AurexVersion;
-import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
-import org.telegram.ui.ActionBar.ActionBar;
-import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.HeaderCell;
-import org.telegram.ui.Cells.TextInfoPrivacyCell;
-import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalFragment;
+
+import java.util.ArrayList;
 
 /**
- * Корневой экран настроек мода Aurex.
+ * Корневой экран настроек мода: список категорий.
  *
- * Экран намеренно построен на классических RecyclerListView + Cells, а не на
- * новом внутреннем API UniversalRecyclerView/UItem: классические компоненты
- * стабильны много лет, тогда как внутренние помощники апстрима часто меняются,
- * что ломало бы наш экран при каждом обновлении.
+ * Собран из штатных компонентов апстрима (UniversalFragment + UItem) — тех же, на которых
+ * построены штатные экраны Telegram. См. docs/UI_GUIDELINES.md.
  *
- * Функциональности пока нет — это каркас, разделы добавляются по мере
- * реализации функций.
+ * Иконки категорий — векторные drawable в стиле апстрима, окрашиваются самой ячейкой
+ * в key_windowBackgroundWhiteGrayIcon.
  */
-public class AurexSettingsActivity extends BaseFragment {
+public class AurexSettingsActivity extends UniversalFragment {
 
-    private int rowCount;
-    private int generalHeaderRow;
-    private int infoRow;
-
-    private ListAdapter listAdapter;
-
-    @Override
-    public boolean onFragmentCreate() {
-        updateRows();
-        return super.onFragmentCreate();
-    }
-
-    private void updateRows() {
-        rowCount = 0;
-        generalHeaderRow = rowCount++;
-        infoRow = rowCount++;
-    }
+    private static final int BTN_GHOST = 1;
 
     @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString(R.string.AurexSettings));
-        if (AndroidUtilities.isTablet()) {
-            actionBar.setOccupyStatusBar(false);
-        }
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
-            @Override
-            public void onItemClick(int id) {
-                if (id == -1) {
-                    finishFragment();
-                }
-            }
-        });
-
-        FrameLayout frameLayout = new FrameLayout(context);
-        frameLayout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
-        fragmentView = frameLayout;
-
-        listAdapter = new ListAdapter(context);
-
-        RecyclerListView listView = new RecyclerListView(context);
-        listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
-        listView.setVerticalScrollBarEnabled(false);
-        listView.setAdapter(listAdapter);
-        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-
-        return fragmentView;
+        final View view = super.createView(context);
+        // Фирменные скруглённые карточки-секции: dp(12) отступ по краям, dp(16) радиус.
+        // Рисует сам список; UniversalFragment по умолчанию этого не делает.
+        listView.setSections();
+        // Фон ячеек теперь рисует секция, а не сами ячейки — иначе белый прямоугольник
+        // выезжает за скругления.
+        listView.adapter.setApplyBackground(false);
+        // Шапка подстраивает фон под скролл, как на штатных экранах.
+        actionBar.setAdaptiveBackground(listView);
+        return view;
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
+    protected CharSequence getTitle() {
+        return getString(R.string.AurexSettings);
+    }
+
+    @Override
+    protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader(getString(R.string.AurexSettingsCategories)));
+        items.add(UItem.asSettingsCell(BTN_GHOST, R.drawable.msg_aurex_ghost, getString(R.string.AurexGhostMode)));
+        items.add(UItem.asShadow(AurexVersion.getFullVersion()));
+    }
+
+    @Override
+    protected void onClick(UItem item, View view, int position, float x, float y) {
+        if (item.id == BTN_GHOST) {
+            presentFragment(new AurexGhostSettingsActivity());
         }
     }
 
-    private static final int VIEW_TYPE_HEADER = 0;
-    private static final int VIEW_TYPE_INFO = 1;
-
-    private class ListAdapter extends RecyclerListView.SelectionAdapter {
-
-        private final Context context;
-
-        public ListAdapter(Context context) {
-            this.context = context;
-        }
-
-        @Override
-        public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            // Пока на экране нет кликабельных строк.
-            return false;
-        }
-
-        @Override
-        public int getItemCount() {
-            return rowCount;
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            if (position == generalHeaderRow) {
-                return VIEW_TYPE_HEADER;
-            }
-            return VIEW_TYPE_INFO;
-        }
-
-        @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view;
-            if (viewType == VIEW_TYPE_HEADER) {
-                view = new HeaderCell(context);
-                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-            } else {
-                view = new TextInfoPrivacyCell(context);
-            }
-            view.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
-            return new RecyclerListView.Holder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-            if (holder.getItemViewType() == VIEW_TYPE_HEADER) {
-                HeaderCell cell = (HeaderCell) holder.itemView;
-                cell.setText(LocaleController.getString(R.string.AurexSettingsGeneral));
-            } else {
-                TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
-                cell.setText(AurexVersion.getFullVersion());
-            }
-        }
+    @Override
+    protected boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        return false;
     }
 }
