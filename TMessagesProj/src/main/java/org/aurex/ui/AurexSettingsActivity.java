@@ -17,6 +17,9 @@ import java.util.ArrayList;
  *
  * Собран из штатных компонентов апстрима (UniversalFragment + UItem) — тех же, на которых
  * построены штатные экраны Telegram. См. docs/UI_GUIDELINES.md.
+ *
+ * Иконки категорий — векторные drawable в стиле апстрима (контур 1.7dp, скруглённые
+ * стыки, 24dp), окрашиваются самой ячейкой в key_windowBackgroundWhiteGrayIcon.
  */
 public class AurexSettingsActivity extends UniversalFragment {
 
@@ -30,7 +33,7 @@ public class AurexSettingsActivity extends UniversalFragment {
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         items.add(UItem.asHeader(getString(R.string.AurexSettingsCategories)));
-        items.add(UItem.asSettingsCell(BTN_GHOST, R.drawable.settings_power, getString(R.string.AurexGhostMode)));
+        items.add(UItem.asSettingsCell(BTN_GHOST, R.drawable.msg_aurex_ghost, getString(R.string.AurexGhostMode)));
         items.add(UItem.asShadow(AurexVersion.getFullVersion()));
     }
 

@@ -1,0 +1,22 @@
+<!-- Aurex: иконка категории "Режим призрака".
+     Контурный стиль апстрима: 24dp, обводка 1.7, скруглённые стыки.
+     Цвет задаёт ячейка (PorterDuff MULTIPLY), поэтому пути чёрные. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,3 c-3.87,0 -7,3.13 -7,7 v8.4 c0,0.92 1.07,1.42 1.78,0.84 l1.3,-1.07 c0.37,-0.3 0.9,-0.29 1.26,0.02 l1.01,0.87 c0.37,0.32 0.91,0.32 1.28,0 l1.01,-0.87 c0.36,-0.31 0.89,-0.32 1.26,-0.02 l1.3,1.07 c0.71,0.58 1.78,0.08 1.78,-0.84 V10 c0,-3.87 -3.13,-7 -7,-7 z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M9.6,9.05 a1.15,1.15 0 1 0 0,2.3 a1.15,1.15 0 1 0 0,-2.3 z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M14.4,9.05 a1.15,1.15 0 1 0 0,2.3 a1.15,1.15 0 1 0 0,-2.3 z" />
+</vector>

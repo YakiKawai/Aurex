@@ -18,17 +18,23 @@ import java.util.Locale;
 /**
  * Экран "Режим призрака".
  *
- * Поведение повторяет AyuGram (AyuGramPreferencesActivity):
- *  - группа по умолчанию свёрнута (у них ghostModeMenuExpanded = false);
- *  - нажатие на строку раскрывает/сворачивает список;
- *  - нажатие на сам переключатель включает/выключает весь режим (у них — callback
- *    в setCollapseArrow, вызывающий AyuConfig.toggleGhostMode());
- *  - подпункты — круглые чекбоксы с отступом (у них CheckBoxCell + setPad(1));
- *  - справа на шапке группы — счётчик вида "N/M".
+ * Компоненты и поведение — как в AyuGram (AyuGramPreferencesActivity), который, в свою
+ * очередь, использует штатные ячейки Telegram:
  *
- * Настройки хранятся в положительной логике ("отправлять прочтения"), а показываются
- * в отрицательной ("Не читать сообщения") — точно так же, как в AyuGram. Инверсия
- * собрана в одном месте, чтобы её нельзя было случайно применить дважды.
+ *  - шапка группы = TextCheckCell2: слева название, справа настоящий switch, между ними
+ *    счётчик "N/M" и стрелка раскрытия. В терминах UniversalFragment это
+ *    {@link UItem#asExpandableSwitch(int, CharSequence, CharSequence)}
+ *    (UniversalAdapter.VIEW_TYPE_EXPANDABLE_SWITCH -> TextCheckCell2 + setCollapseArrow).
+ *    ВАЖНО: не путать с asRoundGroupCheckbox — там CheckBoxCell, у него switch'а нет;
+ *    именно из-за этой ошибки главный переключатель раньше отсутствовал.
+ *  - клик по самому switch'у    -> включить/выключить весь режим (item.clickCallback);
+ *  - клик по строке             -> раскрыть/свернуть список (onClick);
+ *  - при входе на экран список свёрнут (в AyuGram ghostModeMenuExpanded = false);
+ *  - подпункты = CheckBoxCell с отступом: asRoundCheckbox(...).setPad(1).
+ *
+ * Настройки хранятся в положительной логике ("отправлять прочтения"), а показываются в
+ * отрицательной ("Не читать сообщения") — как в AyuGram. Инверсия собрана в одном месте,
+ * чтобы её нельзя было случайно применить дважды.
  */
 public class AurexGhostSettingsActivity extends UniversalFragment {
 
@@ -87,14 +93,14 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         items.add(UItem.asHeader(getString(R.string.AurexGhostEssentials)));
-        items.add(UItem.asRoundGroupCheckbox(
+        items.add(UItem.asExpandableSwitch(
                         GROUP_GHOST,
                         getString(R.string.AurexGhostMode),
                         String.format(Locale.US, "%d/%d", checkedCount(), OPTIONS.length)
                 )
                 .setChecked(GhostMode.isEnabled())
                 .setCollapsed(collapsed)
-                // Нажатие по самому переключателю — включить/выключить весь режим.
+                // Клик по самому переключателю — включить/выключить весь режим целиком.
                 .setClickCallback(v -> {
                     GhostMode.toggle();
                     listView.adapter.update(true);
@@ -117,7 +123,7 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
     @Override
     protected void onClick(UItem item, View view, int position, float x, float y) {
         if (item.id == GROUP_GHOST) {
-            // Нажатие по строке — только раскрытие списка, как в AyuGram.
+            // Клик по строке — только раскрытие/сворачивание списка, как в AyuGram.
             collapsed = !collapsed;
         } else if (item.id == BTN_READ_AFTER_ACTION) {
             AurexFeatures.READ_AFTER_ACTION.toggle();
