@@ -4,6 +4,7 @@ import org.aurex.core.AurexFeatures;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_account;
 import org.telegram.tgnet.tl.TL_stories;
 
 /**
@@ -21,6 +22,11 @@ import org.telegram.tgnet.tl.TL_stories;
  *
  * Локальное состояние клиента при этом не меняется: чат у вас по-прежнему
  * помечается прочитанным, просто собеседник об этом не узнаёт.
+ *
+ * О именах классов: в новых слоях протокола Telegram постепенно выносит запросы
+ * из огромного TLRPC в отдельные файлы (TL_account, TL_stories и т.д.), причём без
+ * префикса TL_ в имени класса: TL_account.updateStatus вместо TLRPC.TL_account_updateStatus.
+ * При обновлении апстрима проверять этот файл в первую очередь.
  */
 public final class GhostRequestFilter {
 
@@ -62,8 +68,8 @@ public final class GhostRequestFilter {
             return !AurexFeatures.SEND_READ_STORIES.get();
         }
 
-        if (request instanceof TLRPC.TL_account_updateStatus) {
-            TLRPC.TL_account_updateStatus status = (TLRPC.TL_account_updateStatus) request;
+        if (request instanceof TL_account.updateStatus) {
+            TL_account.updateStatus status = (TL_account.updateStatus) request;
             if (status.offline) {
                 // Офлайн-пакет никогда не блокируется: он не раскрывает активность.
                 return false;
@@ -96,7 +102,7 @@ public final class GhostRequestFilter {
     /** Автоматический офлайн: вместо заблокированного "онлайн" отправляем "офлайн". */
     private static void sendOfflinePacket(int accountId) {
         try {
-            TLRPC.TL_account_updateStatus offline = new TLRPC.TL_account_updateStatus();
+            TL_account.updateStatus offline = new TL_account.updateStatus();
             offline.offline = true;
             // Рекурсии не будет: офлайн-пакет фильтр пропускает безусловно.
             ConnectionsManager.getInstance(accountId).sendRequest(offline, null);
