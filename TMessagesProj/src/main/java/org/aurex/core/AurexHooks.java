@@ -1,8 +1,10 @@
 package org.aurex.core;
 
 import org.aurex.features.ghost.GhostRequestFilter;
+import org.aurex.features.spy.SpyUpdatesObserver;
 import org.aurex.ui.AurexSettingsActivity;
 import org.telegram.tgnet.TLObject;
+import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.BaseFragment;
 
 /**
@@ -46,6 +48,22 @@ public final class AurexHooks {
             return GhostRequestFilter.shouldDrop(accountId, request);
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    /**
+     * Поток апдейтов от сервера (режим шпиона).
+     *
+     * Вызывается до того, как Telegram применит обновление, поэтому удаляемое
+     * или редактируемое сообщение ещё доступно в штатном кэше клиента.
+     * Сам апдейт никак не модифицируется.
+     */
+    public static void onUpdatesReceived(int accountId, TLObject updates) {
+        try {
+            if (updates instanceof TLRPC.Updates) {
+                SpyUpdatesObserver.onUpdates(accountId, (TLRPC.Updates) updates);
+            }
+        } catch (Throwable ignored) {
         }
     }
 }
