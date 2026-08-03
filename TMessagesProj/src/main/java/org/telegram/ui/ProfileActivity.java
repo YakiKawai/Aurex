@@ -596,6 +596,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private final static int disable_no_forwards = 47;
     // AUREX >>> profile background
     private final static int aurex_profile_background = 1001;
+    private final static int aurex_profile_background_remove = 1002;
     // AUREX <<<
 
     private Rect rect = new Rect();
@@ -1214,7 +1215,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         private Paint paint = new Paint();
         // AUREX >>> profile background
         private final org.aurex.features.profilebg.ProfileBackgroundDrawer aurexProfileBackground =
-            new org.aurex.features.profilebg.ProfileBackgroundDrawer();
+            new org.aurex.features.profilebg.ProfileBackgroundDrawer(this);
         // AUREX <<<
 
         public TopView(Context context) {
@@ -1370,7 +1371,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 if (myProfile) {
                     canvas.save();
                     canvas.clipRect(0, 0, getMeasuredWidth(), y1);
-                    aurexProfileBackground.draw(canvas, getContext(), getMeasuredWidth(), y1, 1f);
+                    aurexProfileBackground.draw(canvas, currentAccount, getMeasuredWidth(), y1, 1f);
                     canvas.restore();
                 }
                 // AUREX <<<
@@ -2670,12 +2671,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 } else if (id == edit_profile) {
                     presentFragment(new UserInfoActivity());
                 // AUREX >>> profile background
-                } else if (id == aurex_profile_background) {
-                    org.aurex.features.profilebg.ProfileBackgrounds.openMenu(ProfileActivity.this, () -> {
-                        if (topView != null) {
-                            topView.invalidate();
-                        }
-                    });
+                } else if (id == aurex_profile_background || id == aurex_profile_background_remove) {
+                    org.aurex.features.profilebg.ProfileBackgrounds.onMenuItemClick(ProfileActivity.this, id);
                 // AUREX <<<
                 } else if (id == invite_to_group) {
                     final TLRPC.User user = getMessagesController().getUser(userId);
@@ -12331,7 +12328,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
         // AUREX >>> profile background
         if (myProfile) {
-            otherItem.addSubItem(aurex_profile_background, R.drawable.msg_aurex_background, LocaleController.getString(R.string.AurexProfileBackground));
+            org.aurex.features.profilebg.ProfileBackgrounds.addMenuItems(this, otherItem, aurex_profile_background, aurex_profile_background_remove, () -> {
+                if (topView != null) {
+                    topView.invalidate();
+                }
+            });
         }
         // AUREX <<<
         if (!isPulledDown) {
@@ -12944,6 +12945,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (imageUpdater != null) {
             imageUpdater.onActivityResult(requestCode, resultCode, data);
         }
+        // AUREX >>> profile background
+        org.aurex.features.profilebg.ProfileBackgrounds.onActivityResult(this, requestCode, resultCode, data);
+        // AUREX <<<
     }
 
     @Override
