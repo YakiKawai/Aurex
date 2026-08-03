@@ -20,6 +20,28 @@
     <string name="AurexReadAfterAction">Читать при действиях</string>
     <string name="AurexReadAfterActionInfo">Отмечает сообщение прочитанным, когда вы отвечаете на него или ставите реакцию.</string>
 
+    <string name="AurexSpyMode">Режим шпиона</string>
+    <string name="AurexSpyModeInfo">Хранит локальную копию удалённых сообщений и историю правок сообщений в ваших чатах.</string>
+    <string name="AurexSpySaving">Сохранение сообщений</string>
+    <string name="AurexSpySaveDeleted">Сохранять удалённые</string>
+    <string name="AurexSpySaveEdits">Сохранять историю правок</string>
+    <string name="AurexSpySavingInfo">Сохранённые копии остаются только на этом устройстве и никуда не отправляются.</string>
+    <string name="AurexSpySaveMedia">Сохранять медиа</string>
+    <string name="AurexSpySaveMediaInfo">Выберите, для каких типов чатов сохранять копию вложений.</string>
+    <string name="AurexSpySaveMediaPrivateChats">В личных чатах</string>
+    <string name="AurexSpySaveMediaPublicChannels">В публичных каналах</string>
+    <string name="AurexSpySaveMediaPrivateChannels">В приватных каналах</string>
+    <string name="AurexSpySaveMediaPublicGroups">В публичных группах</string>
+    <string name="AurexSpySaveMediaPrivateGroups">В приватных группах</string>
+    <string name="AurexSpySaveFormatting">Сохранять форматирование</string>
+    <string name="AurexSpySaveReactions">Сохранять реакции</string>
+    <string name="AurexSpySaveForBots">Сохранять в чатах с ботами</string>
+    <string name="AurexSpyExtrasInfo">Дополнительные данные, сохраняемые вместе с каждым сообщением.</string>
+    <string name="AurexSpyClear">Очистить базу шпиона</string>
+    <string name="AurexSpyClearConfirmTitle">Очистить базу?</string>
+    <string name="AurexSpyClearConfirm">Все сохранённые удалённые сообщения, история правок и скопированные медиа будут безвозвратно удалены. Отменить это действие нельзя.</string>
+    <string name="AurexSpyStorageStats">Сохранено: удалённых — %1$d, изменённых — %2$d</string>
+
     <string name="AurexProfileBackground">Установить фон</string>
     <string name="AurexProfileBackgroundChange">Изменить фон</string>
     <string name="AurexProfileBackgroundRemove">Удалить фон</string>

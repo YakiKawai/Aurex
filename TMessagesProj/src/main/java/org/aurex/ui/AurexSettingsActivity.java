@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public class AurexSettingsActivity extends UniversalFragment {
 
     private static final int BTN_GHOST = 1;
+    private static final int BTN_SPY = 2;
 
     @Override
     public View createView(Context context) {
@@ -49,6 +50,7 @@ public class AurexSettingsActivity extends UniversalFragment {
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         items.add(UItem.asHeader(getString(R.string.AurexSettingsCategories)));
         items.add(UItem.asSettingsCell(BTN_GHOST, R.drawable.msg_aurex_ghost, getString(R.string.AurexGhostMode)));
+        items.add(UItem.asSettingsCell(BTN_SPY, R.drawable.msg_aurex_spy, getString(R.string.AurexSpyMode)));
         items.add(UItem.asShadow(AurexVersion.getFullVersion()));
     }
 
@@ -56,6 +58,8 @@ public class AurexSettingsActivity extends UniversalFragment {
     protected void onClick(UItem item, View view, int position, float x, float y) {
         if (item.id == BTN_GHOST) {
             presentFragment(new AurexGhostSettingsActivity());
+        } else if (item.id == BTN_SPY) {
+            presentFragment(new AurexSpySettingsActivity());
         }
     }
 

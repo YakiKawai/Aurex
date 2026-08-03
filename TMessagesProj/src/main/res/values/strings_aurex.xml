@@ -20,6 +20,28 @@
     <string name="AurexReadAfterAction">Read on actions</string>
     <string name="AurexReadAfterActionInfo">Marks a message as read when you reply to it or react to it.</string>
 
+    <string name="AurexSpyMode">Spy mode</string>
+    <string name="AurexSpyModeInfo">Keeps a local copy of deleted messages and the edit history of messages in your chats.</string>
+    <string name="AurexSpySaving">Message saving</string>
+    <string name="AurexSpySaveDeleted">Save deleted messages</string>
+    <string name="AurexSpySaveEdits">Save edit history</string>
+    <string name="AurexSpySavingInfo">Saved copies stay on this device only and are never sent anywhere.</string>
+    <string name="AurexSpySaveMedia">Save media</string>
+    <string name="AurexSpySaveMediaInfo">Choose which chat types should keep a copy of attached media.</string>
+    <string name="AurexSpySaveMediaPrivateChats">In private chats</string>
+    <string name="AurexSpySaveMediaPublicChannels">In public channels</string>
+    <string name="AurexSpySaveMediaPrivateChannels">In private channels</string>
+    <string name="AurexSpySaveMediaPublicGroups">In public groups</string>
+    <string name="AurexSpySaveMediaPrivateGroups">In private groups</string>
+    <string name="AurexSpySaveFormatting">Save formatting</string>
+    <string name="AurexSpySaveReactions">Save reactions</string>
+    <string name="AurexSpySaveForBots">Save in bot chats</string>
+    <string name="AurexSpyExtrasInfo">Extra details to keep together with each saved message.</string>
+    <string name="AurexSpyClear">Clear spy database</string>
+    <string name="AurexSpyClearConfirmTitle">Clear database?</string>
+    <string name="AurexSpyClearConfirm">All saved deleted messages, edit history and copied media will be permanently removed. This cannot be undone.</string>
+    <string name="AurexSpyStorageStats">Saved: %1$d deleted, %2$d edited</string>
+
     <string name="AurexProfileBackground">Set background</string>
     <string name="AurexProfileBackgroundChange">Change background</string>
     <string name="AurexProfileBackgroundRemove">Remove background</string>
