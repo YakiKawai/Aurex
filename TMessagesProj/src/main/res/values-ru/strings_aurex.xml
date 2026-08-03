@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="AurexSettings">Aurex</string>
+    <string name="AurexSettingsInfo">Настройки и функции мода</string>
+    <string name="AurexSettingsGeneral">Основные</string>
+</resources>

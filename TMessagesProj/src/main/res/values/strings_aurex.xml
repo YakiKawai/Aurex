@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Строки мода Aurex.
+    ПРАВИЛО: здесь допустимы ТОЛЬКО новые ключи с префиксом Aurex.
+    Переопределение строк Telegram (например AppName) делается в модуле
+    приложения TMessagesProj_App, иначе сборка падает с Duplicate resources.
+-->
+<resources>
+    <string name="AurexSettings">Aurex</string>
+    <string name="AurexSettingsInfo">Mod settings and features</string>
+    <string name="AurexSettingsGeneral">General</string>
+</resources>
