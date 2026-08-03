@@ -2,6 +2,7 @@ package org.aurex.ui;
 
 import static org.telegram.messenger.LocaleController.getString;
 
+import android.content.Context;
 import android.view.View;
 
 import org.aurex.core.AurexVersion;
@@ -18,12 +19,26 @@ import java.util.ArrayList;
  * Собран из штатных компонентов апстрима (UniversalFragment + UItem) — тех же, на которых
  * построены штатные экраны Telegram. См. docs/UI_GUIDELINES.md.
  *
- * Иконки категорий — векторные drawable в стиле апстрима (контур 1.7dp, скруглённые
- * стыки, 24dp), окрашиваются самой ячейкой в key_windowBackgroundWhiteGrayIcon.
+ * Иконки категорий — векторные drawable в стиле апстрима, окрашиваются самой ячейкой
+ * в key_windowBackgroundWhiteGrayIcon.
  */
 public class AurexSettingsActivity extends UniversalFragment {
 
     private static final int BTN_GHOST = 1;
+
+    @Override
+    public View createView(Context context) {
+        final View view = super.createView(context);
+        // Фирменные скруглённые карточки-секции: dp(12) отступ по краям, dp(16) радиус.
+        // Рисует сам список; UniversalFragment по умолчанию этого не делает.
+        listView.setSections();
+        // Фон ячеек теперь рисует секция, а не сами ячейки — иначе белый прямоугольник
+        // выезжает за скругления.
+        listView.adapter.setApplyBackground(false);
+        // Шапка подстраивает фон под скролл, как на штатных экранах.
+        actionBar.setAdaptiveBackground(listView);
+        return view;
+    }
 
     @Override
     protected CharSequence getTitle() {

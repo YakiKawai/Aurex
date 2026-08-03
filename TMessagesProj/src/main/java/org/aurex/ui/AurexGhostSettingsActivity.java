@@ -2,6 +2,7 @@ package org.aurex.ui;
 
 import static org.telegram.messenger.LocaleController.getString;
 
+import android.content.Context;
 import android.view.View;
 
 import org.aurex.core.AurexFeatures;
@@ -74,6 +75,17 @@ public class AurexGhostSettingsActivity extends UniversalFragment {
 
     /** Как в AyuGram: при входе на экран список свёрнут. */
     private boolean collapsed = true;
+
+    @Override
+    public View createView(Context context) {
+        final View view = super.createView(context);
+        // См. комментарий в AurexSettingsActivity и docs/UI_GUIDELINES.md:
+        // фирменные скруглённые секции — dp(12) отступ, dp(16) радиус.
+        listView.setSections();
+        listView.adapter.setApplyBackground(false);
+        actionBar.setAdaptiveBackground(listView);
+        return view;
+    }
 
     @Override
     protected CharSequence getTitle() {
