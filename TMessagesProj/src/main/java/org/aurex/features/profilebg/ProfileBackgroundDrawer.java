@@ -1,6 +1,5 @@
 package org.aurex.features.profilebg;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
@@ -8,12 +7,14 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Shader;
+import android.view.View;
 
 /**
  * Рисует фон шапки профиля.
  *
- * <p>Экземпляр принадлежит конкретному TopView: внутри хранятся Paint, Shader и
- * Matrix, чтобы ничего не аллоцировать в onDraw.
+ * <p>Экземпляр принадлежит конкретному TopView: внутри хранятся Paint, Shader и Matrix,
+ * чтобы в onDraw не было ни одной аллокации. Шейдер и градиент пересобираются только
+ * при смене картинки или размеров шапки.
  *
  * <p>Картинка вписывается по center-crop, как штатные обои Telegram: масштаб по большей
  * стороне, остаток обрезается симметрично. Поверх ложится градиент затемнения к низу,
@@ -29,6 +30,9 @@ public class ProfileBackgroundDrawer {
     private final Paint scrimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
 
+    private final View parent;
+    private final Runnable invalidateParent;
+
     private Bitmap boundBitmap;
     private BitmapShader bitmapShader;
     private int lastWidth;
@@ -36,19 +40,30 @@ public class ProfileBackgroundDrawer {
     private int scrimHeight;
 
     /**
-     * @param alpha прозрачность слоя, чтобы фон участвовал в анимациях открытия профиля
-     *              так же, как штатный градиент.
+     * @param parent вью, которую нужно перерисовать, когда фон догрузится с диска.
+     */
+    public ProfileBackgroundDrawer(View parent) {
+        this.parent = parent;
+        this.invalidateParent = () -> {
+            if (this.parent != null) {
+                this.parent.invalidate();
+            }
+        };
+    }
+
+    /**
+     * @param account аккаунт, чей фон рисуем: у каждого свой.
+     * @param alpha   прозрачность слоя, чтобы фон участвовал в анимациях открытия
+     *                профиля так же, как штатный градиент.
      * @return true, если фон был отрисован.
      */
-    public boolean draw(Canvas canvas, Context context, int width, int height, float alpha) {
+    public boolean draw(Canvas canvas, int account, int width, int height, float alpha) {
         if (canvas == null || width <= 0 || height <= 0 || alpha <= 0f) {
             return false;
         }
-        final Bitmap bitmap = ProfileBackground.bitmap(context);
+        final Bitmap bitmap = ProfileBackground.bitmap(account, invalidateParent);
         if (bitmap == null || bitmap.isRecycled()) {
-            boundBitmap = null;
-            bitmapShader = null;
-            imagePaint.setShader(null);
+            reset();
             return false;
         }
         if (bitmap != boundBitmap) {
@@ -88,5 +103,16 @@ public class ProfileBackgroundDrawer {
         scrimPaint.setAlpha((int) (0xFF * alpha));
         canvas.drawRect(0, 0, width, height, scrimPaint);
         return true;
+    }
+
+    private void reset() {
+        if (boundBitmap == null) {
+            return;
+        }
+        boundBitmap = null;
+        bitmapShader = null;
+        imagePaint.setShader(null);
+        lastWidth = 0;
+        lastHeight = 0;
     }
 }
