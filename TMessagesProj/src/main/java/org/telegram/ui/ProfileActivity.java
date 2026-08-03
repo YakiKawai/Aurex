@@ -594,6 +594,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private final static int delete_group = 45;
     private final static int enable_no_forwards = 46;
     private final static int disable_no_forwards = 47;
+    // AUREX >>> profile background
+    private final static int aurex_profile_background = 1001;
+    // AUREX <<<
 
     private Rect rect = new Rect();
 
@@ -1209,6 +1212,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
         private int currentColor;
         private Paint paint = new Paint();
+        // AUREX >>> profile background
+        private final org.aurex.features.profilebg.ProfileBackgroundDrawer aurexProfileBackground =
+            new org.aurex.features.profilebg.ProfileBackgroundDrawer();
+        // AUREX <<<
 
         public TopView(Context context) {
             super(context);
@@ -1359,6 +1366,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     backgroundPaint.setAlpha((int) (0xFF * progressToGradient));
                     canvas.drawRect(0, 0, getMeasuredWidth(), y1, backgroundPaint);
                 }
+                // AUREX >>> profile background
+                if (myProfile) {
+                    canvas.save();
+                    canvas.clipRect(0, 0, getMeasuredWidth(), y1);
+                    aurexProfileBackground.draw(canvas, getContext(), getMeasuredWidth(), y1, 1f);
+                    canvas.restore();
+                }
+                // AUREX <<<
                 if (hasEmoji) {
                     final float loadedScale = emojiLoadedT.set(isEmojiLoaded());
                     boolean shoudIgnore = openAnimationInProgress && playProfileAnimation == 2;
@@ -2654,6 +2669,14 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                 } else if (id == edit_profile) {
                     presentFragment(new UserInfoActivity());
+                // AUREX >>> profile background
+                } else if (id == aurex_profile_background) {
+                    org.aurex.features.profilebg.ProfileBackgrounds.openMenu(ProfileActivity.this, () -> {
+                        if (topView != null) {
+                            topView.invalidate();
+                        }
+                    });
+                // AUREX <<<
                 } else if (id == invite_to_group) {
                     final TLRPC.User user = getMessagesController().getUser(userId);
                     if (user == null) {
@@ -12306,6 +12329,11 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (selfUser && !myProfile) {
             otherItem.addSubItem(logout, R.drawable.msg_leave, LocaleController.getString(R.string.LogOut));
         }
+        // AUREX >>> profile background
+        if (myProfile) {
+            otherItem.addSubItem(aurex_profile_background, R.drawable.msg_aurex_background, LocaleController.getString(R.string.AurexProfileBackground));
+        }
+        // AUREX <<<
         if (!isPulledDown) {
             otherItem.hideSubItem(gallery_menu_save);
             otherItem.hideSubItem(set_as_main);
