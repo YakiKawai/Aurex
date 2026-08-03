@@ -4,14 +4,12 @@ package org.aurex.features.spy;
  * Снимок одного сообщения, сохранённый модулем «Шпион».
  *
  * Одна и та же структура используется и для удалённого сообщения, и для ревизии
- * правки — различает их только {@link #kind}. Так устроено и в AyuGram
- * (AyuMessageBase -> DeletedMessage / EditedMessage), но у нас это одна таблица
- * с индексом по kind: меньше кода, меньше дублирующихся запросов.
+ * правки — различает их только {@link #kind}. В AyuGram это две почти одинаковые
+ * сущности (DeletedMessage и EditedMessage) с дублирующимися DAO.
  *
- * Поля намеренно повторяют набор полей TLRPC.Message, который нужен, чтобы
- * восстановить сообщение обратно: всё, что нельзя разложить по колонкам
- * (сущности форматирования, документ, миниатюры, атрибуты), хранится в BLOB
- * в штатной TL-сериализации Telegram.
+ * Неразложимые части сообщения (сущности форматирования и вложение) хранятся в BLOB
+ * в штатной TL-сериализации Telegram — тогда при обновлении апстрима не нужно
+ * сопровождать собственный формат.
  */
 public final class SpyMessage {
 
@@ -61,14 +59,16 @@ public final class SpyMessage {
     public String mediaPath;
     /** Абсолютный путь к сохранённой миниатюре. */
     public String thumbPath;
+    /** См. константы DOCUMENT_TYPE_* в {@link SpyAttachments}. */
     public int documentType;
-    /** TL-сериализованный TLRPC.Document. */
-    public byte[] document;
-    /** TL-сериализованный список TLRPC.PhotoSize. */
-    public byte[] thumbs;
-    /** TL-сериализованный список TLRPC.DocumentAttribute. */
-    public byte[] documentAttributes;
-    public String mimeType;
+    /**
+     * TL-сериализованный TLRPC.MessageMedia целиком.
+     *
+     * AyuGram разбирает его на три отдельных BLOB (документ, миниатюры, атрибуты)
+     * и потом собирает обратно вручную. Хранить медиа целиком проще и надёжнее:
+     * сериализацией занимается сам Telegram, а поведение для пользователя то же самое.
+     */
+    public byte[] media;
 
     public boolean hasMedia() {
         return documentType != SpyAttachments.DOCUMENT_TYPE_NONE;
