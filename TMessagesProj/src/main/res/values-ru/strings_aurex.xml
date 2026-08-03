@@ -19,4 +19,9 @@
     <string name="AurexAutoOffline">Автоматический «офлайн»</string>
     <string name="AurexReadAfterAction">Читать при действиях</string>
     <string name="AurexReadAfterActionInfo">Отмечает сообщение прочитанным, когда вы отвечаете на него или ставите реакцию.</string>
+
+    <string name="AurexProfileBackground">Установить фон</string>
+    <string name="AurexProfileBackgroundChoose">Выбрать из галереи</string>
+    <string name="AurexProfileBackgroundChange">Изменить фото</string>
+    <string name="AurexProfileBackgroundRemove">Удалить фон</string>
 </resources>

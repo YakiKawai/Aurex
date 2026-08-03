@@ -19,4 +19,9 @@
     <string name="AurexAutoOffline">Automatic offline</string>
     <string name="AurexReadAfterAction">Read on actions</string>
     <string name="AurexReadAfterActionInfo">Marks a message as read when you reply to it or react to it.</string>
+
+    <string name="AurexProfileBackground">Set background</string>
+    <string name="AurexProfileBackgroundChoose">Choose from gallery</string>
+    <string name="AurexProfileBackgroundChange">Change photo</string>
+    <string name="AurexProfileBackgroundRemove">Remove background</string>
 </resources>
