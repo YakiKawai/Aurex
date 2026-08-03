@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.aurex.core.AurexVersion;
+import org.aurex.features.ghost.GhostMode;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -17,26 +18,21 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.HeaderCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
+import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 
 /**
- * Корневой экран настроек мода Aurex.
- *
- * Экран намеренно построен на классических RecyclerListView + Cells, а не на
- * новом внутреннем API UniversalRecyclerView/UItem: классические компоненты
- * стабильны много лет, тогда как внутренние помощники апстрима часто меняются,
- * что ломало бы наш экран при каждом обновлении.
- *
- * Функциональности пока нет — это каркас, разделы добавляются по мере
- * реализации функций.
+ * Корневой экран настроек мода Aurex: список разделов.
  */
 public class AurexSettingsActivity extends BaseFragment {
 
     private int rowCount;
-    private int generalHeaderRow;
+    private int sectionsHeaderRow;
+    private int ghostRow;
     private int infoRow;
 
+    private RecyclerListView listView;
     private ListAdapter listAdapter;
 
     @Override
@@ -47,7 +43,8 @@ public class AurexSettingsActivity extends BaseFragment {
 
     private void updateRows() {
         rowCount = 0;
-        generalHeaderRow = rowCount++;
+        sectionsHeaderRow = rowCount++;
+        ghostRow = rowCount++;
         infoRow = rowCount++;
     }
 
@@ -74,10 +71,15 @@ public class AurexSettingsActivity extends BaseFragment {
 
         listAdapter = new ListAdapter(context);
 
-        RecyclerListView listView = new RecyclerListView(context);
+        listView = new RecyclerListView(context);
         listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setVerticalScrollBarEnabled(false);
         listView.setAdapter(listAdapter);
+        listView.setOnItemClickListener((view, position) -> {
+            if (position == ghostRow) {
+                presentFragment(new AurexGhostSettingsActivity());
+            }
+        });
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         return fragmentView;
@@ -92,7 +94,8 @@ public class AurexSettingsActivity extends BaseFragment {
     }
 
     private static final int VIEW_TYPE_HEADER = 0;
-    private static final int VIEW_TYPE_INFO = 1;
+    private static final int VIEW_TYPE_SETTING = 1;
+    private static final int VIEW_TYPE_INFO = 2;
 
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
 
@@ -104,8 +107,7 @@ public class AurexSettingsActivity extends BaseFragment {
 
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            // Пока на экране нет кликабельных строк.
-            return false;
+            return holder.getItemViewType() == VIEW_TYPE_SETTING;
         }
 
         @Override
@@ -115,10 +117,13 @@ public class AurexSettingsActivity extends BaseFragment {
 
         @Override
         public int getItemViewType(int position) {
-            if (position == generalHeaderRow) {
+            if (position == sectionsHeaderRow) {
                 return VIEW_TYPE_HEADER;
             }
-            return VIEW_TYPE_INFO;
+            if (position == infoRow) {
+                return VIEW_TYPE_INFO;
+            }
+            return VIEW_TYPE_SETTING;
         }
 
         @Override
@@ -126,6 +131,9 @@ public class AurexSettingsActivity extends BaseFragment {
             View view;
             if (viewType == VIEW_TYPE_HEADER) {
                 view = new HeaderCell(context);
+                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            } else if (viewType == VIEW_TYPE_SETTING) {
+                view = new TextSettingsCell(context);
                 view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
             } else {
                 view = new TextInfoPrivacyCell(context);
@@ -136,9 +144,16 @@ public class AurexSettingsActivity extends BaseFragment {
 
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-            if (holder.getItemViewType() == VIEW_TYPE_HEADER) {
+            int viewType = holder.getItemViewType();
+            if (viewType == VIEW_TYPE_HEADER) {
                 HeaderCell cell = (HeaderCell) holder.itemView;
                 cell.setText(LocaleController.getString(R.string.AurexSettingsGeneral));
+            } else if (viewType == VIEW_TYPE_SETTING) {
+                TextSettingsCell cell = (TextSettingsCell) holder.itemView;
+                if (position == ghostRow) {
+                    String value = LocaleController.getString(GhostMode.isEnabled() ? R.string.AurexStateOn : R.string.AurexStateOff);
+                    cell.setTextAndValue(LocaleController.getString(R.string.AurexGhostMode), value, false);
+                }
             } else {
                 TextInfoPrivacyCell cell = (TextInfoPrivacyCell) holder.itemView;
                 cell.setText(AurexVersion.getFullVersion());

@@ -1,5 +1,6 @@
 package org.aurex.core;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -7,20 +8,37 @@ import java.util.List;
  * Реестр всех переключателей мода.
  *
  * Правило проекта: каждая новая функция добавляет РОВНО одну константу сюда.
- * Благодаря этому всегда видно полный список возможностей мода, а экран
- * настроек и функция сброса строятся автоматически поверх этого списка.
+ * Код фич никогда не работает со строковыми ключами напрямую.
  *
- * Сейчас реестр пуст — функциональность добавляется отдельными задачами.
+ * Значения по умолчанию совпадают с AyuGram: по умолчанию клиент ведёт себя как
+ * обычный Telegram, режим призрака выключен.
  */
 public final class AurexFeatures {
 
     private AurexFeatures() {
     }
 
-    // Пример будущей записи (не раскомментировать без реализации функции):
-    // public static final BoolPref SEND_READ_RECEIPTS = new BoolPref("send_read_receipts", true);
+    // ~ Режим призрака
+    // Храним настройки в положительной логике ("отправлять"), а не в отрицательной
+    // ("не отправлять"), чтобы в коде не было двойных отрицаний вида !dontSend.
+    // Инверсия для UI делается только в одном месте — на экране настроек.
+    public static final BoolPref SEND_READ_PACKETS = new BoolPref("ghost_send_read_packets", true);
+    public static final BoolPref SEND_READ_STORIES = new BoolPref("ghost_send_read_stories", true);
+    public static final BoolPref SEND_ONLINE_PACKETS = new BoolPref("ghost_send_online_packets", true);
+    public static final BoolPref SEND_TYPING_PACKETS = new BoolPref("ghost_send_typing_packets", true);
+    public static final BoolPref SEND_UPLOAD_PROGRESS = new BoolPref("ghost_send_upload_progress", true);
+    public static final BoolPref AUTO_OFFLINE = new BoolPref("ghost_auto_offline", false);
+    public static final BoolPref READ_AFTER_ACTION = new BoolPref("ghost_read_after_action", true);
 
-    private static final List<BoolPref> ALL = Collections.emptyList();
+    private static final List<BoolPref> ALL = Collections.unmodifiableList(Arrays.asList(
+            SEND_READ_PACKETS,
+            SEND_READ_STORIES,
+            SEND_ONLINE_PACKETS,
+            SEND_TYPING_PACKETS,
+            SEND_UPLOAD_PROGRESS,
+            AUTO_OFFLINE,
+            READ_AFTER_ACTION
+    ));
 
     /** Все булевы настройки мода. Используется для массового сброса и отладки. */
     public static List<BoolPref> all() {
