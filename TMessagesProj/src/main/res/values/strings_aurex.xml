@@ -41,6 +41,7 @@
     <string name="AurexSpyClearConfirmTitle">Clear database?</string>
     <string name="AurexSpyClearConfirm">All saved deleted messages, edit history and copied media will be permanently removed. This cannot be undone.</string>
     <string name="AurexSpyStorageStats">Saved: %1$d deleted, %2$d edited</string>
+    <string name="AurexSpyHistoryTitle">Edit history</string>
 
     <string name="AurexProfileBackground">Set background</string>
     <string name="AurexProfileBackgroundChange">Change background</string>

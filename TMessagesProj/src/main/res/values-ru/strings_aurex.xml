@@ -41,6 +41,7 @@
     <string name="AurexSpyClearConfirmTitle">Очистить базу?</string>
     <string name="AurexSpyClearConfirm">Все сохранённые удалённые сообщения, история правок и скопированные медиа будут безвозвратно удалены. Отменить это действие нельзя.</string>
     <string name="AurexSpyStorageStats">Сохранено: удалённых — %1$d, изменённых — %2$d</string>
+    <string name="AurexSpyHistoryTitle">История правок</string>
 
     <string name="AurexProfileBackground">Установить фон</string>
     <string name="AurexProfileBackgroundChange">Изменить фон</string>
