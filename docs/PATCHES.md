@@ -19,6 +19,14 @@ git grep -n "AUREX >>>" -- TMessagesProj/src/main/java/org/telegram
 git diff master...dev --name-only -- TMessagesProj/src/main/java/org/telegram
 ```
 
+Сводка на текущий момент:
+
+| Файл апстрима | Врезок | Зачем |
+|---|---|---|
+| `ui/SettingsActivity.java` | 2 | пункт «Aurex» в настройках |
+| `tgnet/ConnectionsManager.java` | 2 | режим призрака + захват апдейтов |
+| `ui/ProfileActivity.java` | 6 | фон шапки профиля |
+
 ---
 
 ## 1. Пункт «Aurex» в настройках приложения
@@ -71,7 +79,7 @@ if (org.aurex.core.AurexHooks.shouldDropRequest(currentAccount, object)) {
 
 **Почему именно здесь.** AyuGram глушит активность в десятках мест внутри
 `MessagesController`, `SendMessagesHelper`, `StoriesController`. Каждая такая правка —
-конфликт при обновлении Telegram. Вся активность всё равно уходит на сервер через
+конфликт при обновлении Telegram. Вся активность всы равно уходит на сервер через
 `ConnectionsManager`, поэтому одна врезка на выходе заменяет десятки врезок и
 гарантирует, что ни один пакет не проскользнёт мимо — даже если апстрим добавит
 новое место отправки прочтений.
@@ -168,3 +176,34 @@ org.aurex.features.profilebg.ProfileBackgrounds.onActivityResult(this, requestCo
 выбора фона означала бы, что при отмене выбора следующая смена аватара ушла бы
 в фон профиля. Свой экземпляр полностью изолирован и при этом даёт ровно тот же
 интерфейс выбора фото.
+
+---
+
+## 4. Захват апдейтов (режим шпиона)
+
+**Файл:** `TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java`
+
+**Метод:** `onUnparsedMessageReceived(...)`, внутри блока
+`if (message instanceof TLRPC.Updates) {` — до передачи апдейта в `MessagesController`.
+
+```java
+// AUREX >>> spy-mode
+org.aurex.core.AurexHooks.onUpdatesReceived(currentAccount, message);
+// AUREX <<<
+```
+
+**Почему именно здесь.** Сервер присылает только факт удаления/редактирования и
+идентификаторы — старого содержимого в апдейте нет. Его надо вычитать из
+локальной базы `messages_v2` ДО того, как `MessagesController` обработает апдейт и
+затрёт данные. Поэтому врезка стоит в самой ранней возможной точке — на приёме
+апдейта из сети, а не в обработчиках внутри `MessagesController`.
+
+Побочное преимущество того же выбора: одно место перехвата покрывает сразу все
+четыре типа апдейтов (`updateDeleteMessages`, `updateDeleteChannelMessages`,
+`updateEditMessage`, `updateEditChannelMessage`) и будет работать для новых типов,
+если апстрим их добавит.
+
+**Важно для безопасности.** `onUnparsedMessageReceived` — горячий сетевой путь.
+`AurexHooks.onUpdatesReceived` полностью обёрнут в `try/catch (Throwable)`: любая
+ошибка модуля будет залогирована и проглочена, но не порвёт обработку
+апдейтов Telegram.
