@@ -20420,6 +20420,11 @@ public class ChatActivity extends BaseFragment implements
             postponedScrollToLastMessageQueryIndex = 0;
         }
         ArrayList<MessageObject> messArr = (ArrayList<MessageObject>) args[2];
+        // AUREX >>> spy-mode
+        if (chatMode == MODE_DEFAULT) {
+            org.aurex.ui.AurexSpyDeleted.merge(currentAccount, getDialogId(), getTopicId(), messArr);
+        }
+        // AUREX <<<
 
         boolean universalNotify = false;
         HashMap<Integer, MessageObject> oldMessages = null;
@@ -33098,6 +33103,11 @@ public class ChatActivity extends BaseFragment implements
         // AUREX >>> spy-mode
         if (option == org.aurex.ui.AurexSpyChat.OPTION_SPY_HISTORY) {
             org.aurex.ui.AurexSpyChat.openHistory(this, selectedObject);
+            return;
+        }
+        // AUREX <<<
+        // AUREX >>> spy-mode
+        if (org.aurex.ui.AurexSpyDeleted.blockAction(this, selectedObject, option)) {
             return;
         }
         // AUREX <<<
