@@ -26,6 +26,7 @@ git diff master...dev --name-only -- TMessagesProj/src/main/java/org/telegram
 | `ui/SettingsActivity.java` | 2 | пункт «Aurex» в настройках |
 | `tgnet/ConnectionsManager.java` | 2 | режим призрака + захват апдейтов |
 | `ui/ProfileActivity.java` | 6 | фон шапки профиля |
+| `ui/ChatActivity.java` | 2 | режим шпиона: история правок в меню сообщения |
 
 ---
 
@@ -207,3 +208,71 @@ org.aurex.core.AurexHooks.onUpdatesReceived(currentAccount, message);
 `AurexHooks.onUpdatesReceived` полностью обёрнут в `try/catch (Throwable)`: любая
 ошибка модуля будет залогирована и проглочена, но не порвёт обработку
 апдейтов Telegram.
+
+---
+
+## 5. Режим шпиона в чате
+
+**Файл:** `TMessagesProj/src/main/java/org/telegram/ui/ChatActivity.java`
+
+Самый большой файл апстрима (более 45 000 строк) и самый частый источник
+конфликтов при обновлении. Поэтому здесь действует дополнительное правило:
+**никакой логики, только вызовы фасадов** `org.aurex.ui.AurexSpyChat` и
+`org.aurex.ui.AurexSpyDeleted`, и врезки максимально короткие.
+
+### 5.1 Пункт «История правок» в меню сообщения
+
+**Метод:** `createMenu(...)`, сразу после блока, добавляющего пункт `OPTION_COPY`.
+
+```java
+// AUREX >>> spy-mode
+if (org.aurex.ui.AurexSpyChat.hasRevisions(currentAccount, selectedObject)) {
+    items.add(LocaleController.getString(R.string.AurexSpyHistoryTitle));
+    options.add(org.aurex.ui.AurexSpyChat.OPTION_SPY_HISTORY);
+    icons.add(R.drawable.msg_edit);
+}
+// AUREX <<<
+```
+
+Пункт появляется только если для сообщения реально сохранены правки:
+`hasRevisions` — это `SELECT 1 ... LIMIT 1` по индексу `idx_spy_message_lookup`,
+вызов синхронный и на построение меню не влияет.
+
+### 5.2 Обработка нажатия
+
+**Метод:** `processSelectedOption(int option)`, сразу после проверки
+`if (selectedObject == null || getParentActivity() == null) { return; }` и **до**
+`switch (option)`.
+
+```java
+// AUREX >>> spy-mode
+if (option == org.aurex.ui.AurexSpyChat.OPTION_SPY_HISTORY) {
+    org.aurex.ui.AurexSpyChat.openHistory(this, selectedObject);
+    return;
+}
+// AUREX <<<
+```
+
+**Почему перехват до `switch`, а не `case`.** Метка `case` требовала бы попадания
+внутрь тела гигантского `switch` и завязки на compile-time-константу. Ранний
+`return` перед `switch` полностью развязывает мод со структурой апстримного
+метода: апстрим может как угодно переписывать `switch`, врезка останется валидной.
+
+**Занятые id опций.** Апстрим использует значения до `OPTION_VIEW_STATISTICS = 115`,
+мод занимает диапазон от 1338 (`AurexSpyChat.OPTION_SPY_HISTORY`) — пересечений нет.
+
+### 5.3 Восстановление удалённых сообщений в ленте (планируется)
+
+Логика уже готова и лежит в `org/aurex/features/spy/SpyChatMerger.java`, фасад —
+`org/aurex/ui/AurexSpyDeleted.java`. Врезки в `ChatActivity` будут состоять из:
+
+1. подмешивания сохранённых сообщений в загруженную порцию истории —
+   `AurexSpyDeleted.merge(currentAccount, dialogId, topicId, messArr)`;
+2. подписки фрагмента на события модуля —
+   `AurexSpyDeleted.addObservers(...)` / `removeObservers(...)`;
+3. защиты серверных действий над восстановленным сообщением —
+   `AurexSpyDeleted.isRestored(messageObject)`.
+
+Восстановленное сообщение помечается меткой `🧹` **в конце** текста: если ставить
+метку в начало, сместились бы все `offset` сохранённого форматирования (жирный,
+ссылки, кастомные эмодзи).
