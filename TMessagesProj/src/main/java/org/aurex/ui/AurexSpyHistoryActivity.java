@@ -153,8 +153,8 @@ public class AurexSpyHistoryActivity extends BaseFragment implements Notificatio
 
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            return new RecyclerListView.Holder(
-                    new AurexSpyMessageCell(context, getParentActivity(), AurexSpyHistoryActivity.this));
+            return new RecyclerListView.Holder(new AurexSpyMessageCell(
+                    context, currentAccount, getParentActivity(), AurexSpyHistoryActivity.this));
         }
 
         @Override

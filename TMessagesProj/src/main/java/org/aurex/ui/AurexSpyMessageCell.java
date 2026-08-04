@@ -27,8 +27,13 @@ public class AurexSpyMessageCell extends ChatMessageCell {
 
     private SpyMessage revision;
 
-    public AurexSpyMessageCell(Context context, Activity activity, BaseFragment fragment) {
-        super(context);
+    /**
+     * @param accountId номер аккаунта; базовый класс требует его явно (конструктора
+     *                  только с Context у ChatMessageCell нет). Назван не currentAccount,
+     *                  чтобы не затенять одноимённое поле ChatMessageCell.
+     */
+    public AurexSpyMessageCell(Context context, int accountId, Activity activity, BaseFragment fragment) {
+        super(context, accountId);
 
         // Вне чата ячейка рисуется целиком и без аватарок группового вида.
         setFullyDraw(true);
