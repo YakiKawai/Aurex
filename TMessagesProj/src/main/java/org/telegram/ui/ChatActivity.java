@@ -3153,6 +3153,9 @@ public class ChatActivity extends BaseFragment implements
             getMessagesController().getSavedMessagesController().checkSavedDialogCount(getTopicId());
         }
 
+        // AUREX >>> spy: подписка чата на события модуля
+        org.aurex.ui.AurexSpyDeleted.onChatOpen(currentAccount, getDialogId(), this);
+        // AUREX <<<
         return true;
     }
 
@@ -3365,6 +3368,9 @@ public class ChatActivity extends BaseFragment implements
             globalObserversGroup = null;
         }
 
+        // AUREX >>> spy: снятие подписки
+        org.aurex.ui.AurexSpyDeleted.onChatClose(currentAccount, getDialogId(), this);
+        // AUREX <<<
         getNotificationCenter().removeObserver(this, NotificationCenter.closeChats);
 
         if (chatMode == 0 && AndroidUtilities.isTablet()) {
