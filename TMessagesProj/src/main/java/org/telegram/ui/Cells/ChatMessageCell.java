@@ -18427,6 +18427,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (currentMessageObject.messageOwner.video_processing_pending) {
             timeString = formatString(R.string.ScheduledTimeApprox, timeString);
         }
+        // AUREX >>> spy: место под иконку удалённого сообщения
+        if (org.aurex.ui.AurexSpyMark.isMarked(currentMessageObject)) {
+            timeString = org.aurex.ui.AurexSpyMark.reserve(timeString);
+        }
+        // AUREX <<<
         if (signString != null) {
             if (messageObject.messageOwner.via_business_bot_id != 0) {
                 currentTimeString = timeString + ", ";
@@ -23914,6 +23919,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             canvas.save();
             canvas.translate(drawTimeX = timeTitleTimeX + additionalX, drawTimeY = timeY - dp(7.3f) - timeLayout.getHeight());
             SpoilerEffect.layoutDrawMaybe(timeLayout, canvas);
+            // AUREX >>> spy: иконка удалённого сообщения
+            org.aurex.ui.AurexSpyMark.draw(canvas, currentMessageObject, timeLayout.getHeight());
+            // AUREX <<<
             canvas.restore();
             Theme.chat_timePaint.setAlpha(255);
         } else {
@@ -24002,10 +24010,16 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     Theme.chat_timePaint.setAlpha((int) (oldAlpha * (transitionParams.animateChangeProgress)));
                     SpoilerEffect.layoutDrawMaybe(timeLayout, canvas);
                     Theme.chat_timePaint.setAlpha(oldAlpha);
+                    // AUREX >>> spy: иконка удалённого сообщения
+                    org.aurex.ui.AurexSpyMark.draw(canvas, currentMessageObject, timeLayout.getHeight());
+                    // AUREX <<<
                 }
             } else {
                 canvas.translate(drawTimeX = timeTitleTimeX + additionalX, drawTimeY = layoutHeight - dp(pinnedBottom || pinnedTop ? 7.5f : 6.5f) - timeLayout.getHeight() + timeYOffset);
                 SpoilerEffect.layoutDrawMaybe(timeLayout, canvas);
+                // AUREX >>> spy: иконка удалённого сообщения
+                org.aurex.ui.AurexSpyMark.draw(canvas, currentMessageObject, timeLayout.getHeight());
+                // AUREX <<<
             }
             canvas.restore();
         }
