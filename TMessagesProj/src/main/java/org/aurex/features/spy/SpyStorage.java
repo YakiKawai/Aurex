@@ -97,19 +97,27 @@ public final class SpyStorage {
         return result.isEmpty() ? null : result.get(0);
     }
 
-    /** Удалённые сообщения диалога в диапазоне идентификаторов — для подмешивания в историю чата. */
-    public List<SpyMessage> getDeletedRange(long userId, long dialogId, long topicId, int startId, int endId, int limit) {
+    /**
+     * Удалённые сообщения диалога начиная с указанного идентификатора —
+     * для подмешивания в историю чата.
+     *
+     * Диапазон ограничен только снизу. Ограничение сверху выглядит логичным,
+     * но ломает главный сценарий: сообщение, удалённое последним в чате, имеет
+     * id больше всех оставшихся и в такую выборку не попадает.
+     *
+     * Сортировка по убыванию: если сохранённых сообщений больше лимита,
+     * показать нужно самые свежие.
+     */
+    public List<SpyMessage> getDeletedFrom(long userId, long dialogId, int startId, int limit) {
         return query(
-                "kind = ? AND user_id = ? AND dialog_id = ? AND topic_id = ? AND message_id >= ? AND message_id <= ?",
+                "kind = ? AND user_id = ? AND dialog_id = ? AND message_id >= ?",
                 new String[]{
                         String.valueOf(SpyMessage.KIND_DELETED),
                         String.valueOf(userId),
                         String.valueOf(dialogId),
-                        String.valueOf(topicId),
-                        String.valueOf(startId),
-                        String.valueOf(endId)
+                        String.valueOf(startId)
                 },
-                "message_id", String.valueOf(limit));
+                "message_id DESC", String.valueOf(limit));
     }
 
     /** Все части удалённого альбома. */

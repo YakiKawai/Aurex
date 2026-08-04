@@ -26,12 +26,41 @@ public final class AurexSpyDeleted {
     }
 
     /**
-     * Подмешивает удалённые сообщения в загруженную порцию истории.
+     * Чат открыт: подписываемся на события модуля и начинаем учёт подмешанных
+     * сообщений заново.
+     */
+    public static void onChatOpen(int accountId, long dialogId, NotificationCenter.NotificationCenterDelegate delegate) {
+        try {
+            SpyChatMerger.openSession(dialogId);
+            final NotificationCenter center = NotificationCenter.getInstance(accountId);
+            center.addObserver(delegate, SpyNotifications.MESSAGE_EDITED);
+            center.addObserver(delegate, SpyNotifications.MESSAGES_DELETED);
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+    }
+
+    /** Чат закрыт: снимаем подписку и освобождаем учёт. */
+    public static void onChatClose(int accountId, long dialogId, NotificationCenter.NotificationCenterDelegate delegate) {
+        try {
+            final NotificationCenter center = NotificationCenter.getInstance(accountId);
+            center.removeObserver(delegate, SpyNotifications.MESSAGE_EDITED);
+            center.removeObserver(delegate, SpyNotifications.MESSAGES_DELETED);
+            SpyChatMerger.closeSession(dialogId);
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+    }
+
+    /**
+     * Подмешивает удалённые сообщения в список сообщений чата.
      *
-     * Вызывается до того, как лента разберёт порцию: всю дальнейшую бухгалтерию
-     * (словари сообщений, группы, даты, верстка) делает штатный код Telegram.
+     * Вызывается и для только что загруженной порции истории, и для живой
+     * ленты, когда сообщение удалили при открытом чате. Всю дальнейшую
+     * бухгалтерию (словари сообщений, группы, даты, верстка) делает штатный
+     * код Telegram.
      *
-     * @return true, если в порцию было добавлено хотя бы одно сообщение
+     * @return true, если было добавлено хотя бы одно сообщение
      */
     public static boolean merge(int accountId, long dialogId, long topicId, List<MessageObject> messages) {
         try {
@@ -51,6 +80,19 @@ public final class AurexSpyDeleted {
         } catch (Throwable e) {
             FileLog.e(e);
             return false;
+        }
+    }
+
+    /**
+     * Прозрачность сообщения в ленте: восстановленное рисуется приглушённым,
+     * чтобы его было видно с первого взгляда.
+     */
+    public static float alphaFor(MessageObject object) {
+        try {
+            return isRestored(object) ? SpyChatMerger.RESTORED_ALPHA : 1f;
+        } catch (Throwable e) {
+            FileLog.e(e);
+            return 1f;
         }
     }
 
@@ -94,27 +136,9 @@ public final class AurexSpyDeleted {
                 || option == AurexSpyChat.OPTION_SPY_HISTORY;
     }
 
-    /**
-     * Подписка чата на события модуля: сохранена правка / сохранены удалённые.
-     */
-    public static void addObservers(int accountId, NotificationCenter.NotificationCenterDelegate delegate) {
-        try {
-            final NotificationCenter center = NotificationCenter.getInstance(accountId);
-            center.addObserver(delegate, SpyNotifications.MESSAGE_EDITED);
-            center.addObserver(delegate, SpyNotifications.MESSAGES_DELETED);
-        } catch (Throwable e) {
-            FileLog.e(e);
-        }
-    }
-
-    public static void removeObservers(int accountId, NotificationCenter.NotificationCenterDelegate delegate) {
-        try {
-            final NotificationCenter center = NotificationCenter.getInstance(accountId);
-            center.removeObserver(delegate, SpyNotifications.MESSAGE_EDITED);
-            center.removeObserver(delegate, SpyNotifications.MESSAGES_DELETED);
-        } catch (Throwable e) {
-            FileLog.e(e);
-        }
+    /** Уведомление о том, что модуль сохранил удалённые сообщения диалога. */
+    public static boolean isDeletedNotification(int id) {
+        return id == SpyNotifications.MESSAGES_DELETED;
     }
 
     /** Относится ли уведомление к модулю. */
