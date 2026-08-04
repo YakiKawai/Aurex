@@ -1,6 +1,5 @@
 package org.aurex.features.spy;
 
-import android.text.TextUtils;
 import android.util.LongSparseArray;
 
 import org.telegram.messenger.FileLog;
@@ -25,11 +24,14 @@ import java.util.WeakHashMap;
  * на то, что порция истории приходит один раз, а Telegram может прислать её
  * повторно (обновление кеша, прыжок к сообщению, возврат к последнему
  * прочитанному). Поэтому мы помним, какие id уже подмешали за сессию чата.
+ *
+ * Текст сообщения при восстановлении не изменяется: за визуальное отличие
+ * отвечают прозрачность ({@link #RESTORED_ALPHA}) и иконка
+ * {@code org.aurex.ui.AurexSpyMark}. AyuGram вместо этого дописывает в текст
+ * символ, но тогда сохранённое сообщение перестаёт совпадать с оригиналом —
+ * это заметно при копировании и в истории правок.
  */
 public final class SpyChatMerger {
-
-    /** Метка, которой помечается восстановленное сообщение. */
-    public static final String DELETED_MARK = "\uD83E\uDDF9";
 
     /** Прозрачность восстановленного сообщения: сразу видно, что его больше нет. */
     public static final float RESTORED_ALPHA = 0.6f;
@@ -154,7 +156,7 @@ public final class SpyChatMerger {
     /**
      * Создано ли сообщение модулем. Нужно, чтобы не давать серверных действий
      * (ответить, переслать, закрепить) на объекте, которого на сервере уже нет,
-     * и чтобы отрисовать его полупрозрачным.
+     * и чтобы отрисовать его приглушённым и с иконкой.
      */
     public static boolean isRestored(MessageObject object) {
         return object != null && RESTORED.contains(object);
@@ -202,7 +204,6 @@ public final class SpyChatMerger {
                 return null;
             }
             message.date = saved.date > 0 ? saved.date : message.date;
-            message.message = mark(message.message);
 
             final MessageObject object = new MessageObject(accountId, message, true, true);
             object.generateThumbs(false);
@@ -212,20 +213,6 @@ public final class SpyChatMerger {
             FileLog.e(e);
             return null;
         }
-    }
-
-    /**
-     * Метка ставится в конец текста, а не в начало: иначе сместились бы все
-     * offset у сохранённого форматирования (жирный, ссылки, эмодзи).
-     */
-    private static String mark(String text) {
-        if (TextUtils.isEmpty(text)) {
-            return DELETED_MARK;
-        }
-        if (text.endsWith(DELETED_MARK)) {
-            return text;
-        }
-        return text + " " + DELETED_MARK;
     }
 
     /** Вставка с сохранением порядка по убыванию id. */
