@@ -3,8 +3,13 @@ package org.aurex.ui;
 import org.aurex.features.spy.SpyChatMerger;
 import org.aurex.features.spy.SpyNotifications;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ChatActivity;
+import org.telegram.ui.Components.BulletinFactory;
 
 import java.util.List;
 
@@ -23,7 +28,10 @@ public final class AurexSpyDeleted {
     /**
      * Подмешивает удалённые сообщения в загруженную порцию истории.
      *
-     * @return true, если лента изменилась и её нужно перерисовать
+     * Вызывается до того, как лента разберёт порцию: всю дальнейшую бухгалтерию
+     * (словари сообщений, группы, даты, верстка) делает штатный код Telegram.
+     *
+     * @return true, если в порцию было добавлено хотя бы одно сообщение
      */
     public static boolean merge(int accountId, long dialogId, long topicId, List<MessageObject> messages) {
         try {
@@ -44,6 +52,46 @@ public final class AurexSpyDeleted {
             FileLog.e(e);
             return false;
         }
+    }
+
+    /**
+     * Нужно ли заблокировать действие контекстного меню.
+     *
+     * Сообщения, восстановленные из локальной базы, на сервере не существуют.
+     * Любое сетевое действие над ними (ответить, переслать, закрепить,
+     * реакция, удалить) вернуло бы ошибку или сработало бы непредсказуемо,
+     * поэтому вместо ошибки сервера пользователь видит понятное объяснение.
+     *
+     * @return true, если вызывающая сторона должна прервать обработку
+     */
+    public static boolean blockAction(BaseFragment fragment, MessageObject object, int option) {
+        try {
+            if (!isRestored(object) || isLocalOption(option)) {
+                return false;
+            }
+            if (fragment != null) {
+                BulletinFactory.of(fragment)
+                        .createErrorBulletin(LocaleController.getString(R.string.AurexSpyDeletedActionUnavailable))
+                        .show();
+            }
+            return true;
+        } catch (Throwable e) {
+            FileLog.e(e);
+            return false;
+        }
+    }
+
+    /**
+     * Действия, которые полностью локальны и потому разрешены.
+     */
+    private static boolean isLocalOption(int option) {
+        return option == ChatActivity.OPTION_COPY
+                || option == ChatActivity.OPTION_SHARE
+                || option == ChatActivity.OPTION_SAVE_TO_GALLERY
+                || option == ChatActivity.OPTION_SAVE_TO_GALLERY2
+                || option == ChatActivity.OPTION_SAVE_TO_DOWNLOADS_OR_MUSIC
+                || option == ChatActivity.OPTION_TRANSLATE
+                || option == AurexSpyChat.OPTION_SPY_HISTORY;
     }
 
     /**
