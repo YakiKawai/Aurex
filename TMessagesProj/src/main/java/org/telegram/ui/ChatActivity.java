@@ -20380,6 +20380,17 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public void didReceivedNotification(int id, int account, final Object... args) {
+        // AUREX >>> spy: мгновенное появление удалённого сообщения
+        if (org.aurex.ui.AurexSpyDeleted.isSpyNotification(id)) {
+            if (org.aurex.ui.AurexSpyDeleted.isDeletedNotification(id) && account == currentAccount && chatMode == MODE_DEFAULT
+                    && args.length > 0 && args[0] instanceof Long && (Long) args[0] == getDialogId()) {
+                if (org.aurex.ui.AurexSpyDeleted.merge(currentAccount, getDialogId(), getTopicId(), messages) && chatAdapter != null) {
+                    chatAdapter.notifyDataSetChanged(false);
+                }
+            }
+            return;
+        }
+        // AUREX <<<
         if (id == NotificationCenter.messagesDidLoad) {
             didReceivedNotification_messagesDidLoad(id, account, args);
         } else {
@@ -37488,6 +37499,9 @@ public class ChatActivity extends BaseFragment implements
                     }
                     messageCell.setShowTopic(true);
                     messageCell.setMessageObject(message, groupedMessages, pinnedBottom, pinnedTop, firstInChat, lastInChatList);
+                    // AUREX >>> spy: восстановленное сообщение рисуется приглушённым
+                    messageCell.setAlpha(org.aurex.ui.AurexSpyDeleted.alphaFor(message));
+                    // AUREX <<<
                     messageCell.setSpoilersSuppressed(chatListView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE);
                     messageCell.setHighlighted(highlightMessageId != Integer.MAX_VALUE && message.getId() == highlightMessageId);
                     if (messageCell.isHighlighted() && highlightMessageQuote != null) {
