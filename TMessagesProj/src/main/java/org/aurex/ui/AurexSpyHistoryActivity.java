@@ -45,6 +45,7 @@ public class AurexSpyHistoryActivity extends BaseFragment implements Notificatio
 
     private RecyclerListView listView;
     private ListAdapter adapter;
+    private boolean closing;
 
     public AurexSpyHistoryActivity(MessageObject source) {
         this.source = source;
@@ -128,6 +129,13 @@ public class AurexSpyHistoryActivity extends BaseFragment implements Notificatio
                 revisions.addAll(loaded);
                 if (adapter != null) {
                     adapter.notifyDataSetChanged();
+                }
+                // Показывать нечего: либо хранилище очистили, пока экран был открыт,
+                // либо единственная версия исчезла. Пустой экран — тупик для
+                // пользователя, поэтому просто возвращаемся в чат.
+                if (revisions.isEmpty() && !closing) {
+                    closing = true;
+                    finishFragment();
                 }
             });
         });

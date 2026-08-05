@@ -12,17 +12,31 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Чтение сообщений из штатного кэша Telegram (таблица messages_v2).
+ * Чтение сообщений из штатного кэша Telegram.
  *
  * Благодаря этому моду не нужно врезаться в MessagesStorage: мы читаем содержимое
  * сообщения тем же способом, как это делает сам Telegram в ProfileChannelCell
  * и других местах.
+ *
+ * Источников два, и они дополняют друг друга:
+ *  - {@link #TABLE_HISTORY} — обычная история чатов. Есть всё, что клиент успел
+ *    получить и сохранить, пока работал;
+ *  - {@link #TABLE_PUSH} — очередь уведомлений. Единственное место, где лежит
+ *    сообщение, доставленное push-уведомлением при выключенном приложении: в
+ *    историю чата оно попадёт только после запуска клиента, а если к этому
+ *    моменту его успели удалить, сервер его больше не отдаст.
+ *
+ * Формат BLOB в обеих таблицах одинаковый — результат
+ * {@code TLRPC.Message.serializeToStream}, поэтому обе читаются одним кодом.
  *
  * ВСЕ методы обязаны вызываться в очереди хранилища
  * ({@code MessagesStorage.getStorageQueue()}): только так гарантируется безопасный доступ
  * к базе и правильный порядок относительно записей самого Telegram.
  */
 final class SpyTelegramMessages {
+
+    private static final String TABLE_HISTORY = "messages_v2";
+    private static final String TABLE_PUSH = "unread_push_messages";
 
     interface Consumer {
         void accept(long dialogId, TLRPC.Message message);
@@ -31,42 +45,67 @@ final class SpyTelegramMessages {
     private SpyTelegramMessages() {
     }
 
-    /**
-     * Загружает сообщения канала или супергруппы по списку идентификаторов.
-     */
+    /** Сообщения канала или супергруппы из истории чата. */
     static void loadChannelMessages(int accountId, long channelId, List<Integer> messageIds, Consumer consumer) {
-        if (messageIds == null || messageIds.isEmpty()) {
-            return;
-        }
-        long dialogId = -channelId;
-        String sql = String.format(Locale.US,
-                "SELECT data, mid FROM messages_v2 WHERE uid = %d AND mid IN (%s)",
-                dialogId, join(messageIds));
-        read(accountId, sql, false, dialogId, consumer);
+        readChannel(accountId, TABLE_HISTORY, channelId, messageIds, consumer);
+    }
+
+    /** То же, но из очереди уведомлений: клиент был выключен и историю ещё не догружал. */
+    static void loadChannelPushMessages(int accountId, long channelId, List<Integer> messageIds, Consumer consumer) {
+        readChannel(accountId, TABLE_PUSH, channelId, messageIds, consumer);
     }
 
     /**
-     * Загружает сообщения личных чатов и обычных групп.
+     * Сообщения личных чатов и обычных групп из истории чата.
      *
      * В этом случае сервер не сообщает диалог: идентификаторы сообщений уникальны
      * в пределах аккаунта, поэтому диалог берётся из самой таблицы.
      */
     static void loadMessages(int accountId, List<Integer> messageIds, Consumer consumer) {
-        if (messageIds == null || messageIds.isEmpty()) {
-            return;
-        }
-        String sql = String.format(Locale.US,
-                "SELECT data, mid, uid FROM messages_v2 WHERE mid IN (%s)",
-                join(messageIds));
-        read(accountId, sql, true, 0, consumer);
+        readPlain(accountId, TABLE_HISTORY, messageIds, consumer);
+    }
+
+    /** То же, но из очереди уведомлений. */
+    static void loadPushMessages(int accountId, List<Integer> messageIds, Consumer consumer) {
+        readPlain(accountId, TABLE_PUSH, messageIds, consumer);
     }
 
     /** Одно сообщение конкретного диалога — версия до применения правки. */
     static TLRPC.Message loadMessage(int accountId, long dialogId, int messageId) {
+        return readSingle(accountId, TABLE_HISTORY, dialogId, messageId);
+    }
+
+    /** Одно сообщение из очереди уведомлений. */
+    static TLRPC.Message loadPushMessage(int accountId, long dialogId, int messageId) {
+        return readSingle(accountId, TABLE_PUSH, dialogId, messageId);
+    }
+
+    private static void readChannel(int accountId, String table, long channelId, List<Integer> messageIds, Consumer consumer) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            return;
+        }
+        long dialogId = -channelId;
+        String sql = String.format(Locale.US,
+                "SELECT data, mid FROM %s WHERE uid = %d AND mid IN (%s)",
+                table, dialogId, join(messageIds));
+        read(accountId, sql, false, dialogId, consumer);
+    }
+
+    private static void readPlain(int accountId, String table, List<Integer> messageIds, Consumer consumer) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            return;
+        }
+        String sql = String.format(Locale.US,
+                "SELECT data, mid, uid FROM %s WHERE mid IN (%s)",
+                table, join(messageIds));
+        read(accountId, sql, true, 0, consumer);
+    }
+
+    private static TLRPC.Message readSingle(int accountId, String table, long dialogId, int messageId) {
         final TLRPC.Message[] result = new TLRPC.Message[1];
         String sql = String.format(Locale.US,
-                "SELECT data, mid FROM messages_v2 WHERE uid = %d AND mid = %d",
-                dialogId, messageId);
+                "SELECT data, mid FROM %s WHERE uid = %d AND mid = %d",
+                table, dialogId, messageId);
         read(accountId, sql, false, dialogId, (did, message) -> result[0] = message);
         return result[0];
     }

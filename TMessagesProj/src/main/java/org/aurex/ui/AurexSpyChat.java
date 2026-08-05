@@ -2,15 +2,20 @@ package org.aurex.ui;
 
 import org.aurex.features.spy.SpyStorage;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
+import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ChatActivity;
+
+import java.util.List;
 
 /**
  * Фасад между экраном чата Telegram и модулем «Шпион».
  *
  * Врезки в чужой код — самое дорогое при обновлении форка, поэтому вся логика
- * собрана здесь, а в ChatActivity останется два вызова: проверка условия и действие.
+ * собрана здесь, а в ChatActivity остаются только вызовы.
  * Тот же принцип уже использован в {@code AurexHooks} для режима призрака.
  *
  * Любая ошибка здесь гасится: сбой в функции мода не должен ломать штатное меню чата.
@@ -53,6 +58,52 @@ public final class AurexSpyChat {
         } catch (Throwable e) {
             FileLog.e(e);
             return false;
+        }
+    }
+
+    /**
+     * Добавляет в готовое меню сообщения пункт «История правок» — сразу под «Удалить».
+     *
+     * Почему вставка, а не добавление в нужном месте кода: пункты меню Telegram
+     * собирает в десятке независимых ветвлений (личный чат, канал, отложенные,
+     * избранное, предложения постов), и «Удалить» появляется в каждой из них по
+     * своим правилам. Привязка врезки к одному из этих блоков означала бы, что в
+     * остальных случаях пункт либо пропадёт, либо встанет не туда. Поэтому модуль
+     * получает уже собранное меню и сам находит позицию «Удалить».
+     *
+     * Если «Удалить» в меню нет (например, чужое сообщение в канале без прав),
+     * пункт становится последним — это ожидаемо и не ломает порядок.
+     *
+     * @param items   подписи пунктов
+     * @param options коды пунктов
+     * @param icons   иконки пунктов
+     */
+    public static void addHistoryItem(int accountId, MessageObject messageObject,
+                                      List<? super String> items, List<Integer> options, List<Integer> icons) {
+        try {
+            if (items == null || options == null || icons == null) {
+                return;
+            }
+            // Три списка индексируются синхронно: если их длины разошлись, вставка по
+            // индексу перепутала бы подписи и действия. Такого быть не должно, но
+            // молча ничего не делать безопаснее, чем сломать чужое меню.
+            if (items.size() != options.size() || icons.size() != options.size()) {
+                return;
+            }
+            // Меню может собираться повторно, пункт обязан остаться один.
+            if (options.contains(Integer.valueOf(OPTION_SPY_HISTORY))) {
+                return;
+            }
+            if (!hasRevisions(accountId, messageObject)) {
+                return;
+            }
+            int deleteIndex = options.indexOf(Integer.valueOf(ChatActivity.OPTION_DELETE));
+            int at = deleteIndex >= 0 ? deleteIndex + 1 : options.size();
+            items.add(at, LocaleController.getString(R.string.AurexSpyHistoryTitle));
+            options.add(at, Integer.valueOf(OPTION_SPY_HISTORY));
+            icons.add(at, Integer.valueOf(R.drawable.msg_edit));
+        } catch (Throwable e) {
+            FileLog.e(e);
         }
     }
 

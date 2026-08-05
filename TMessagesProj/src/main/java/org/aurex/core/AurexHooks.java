@@ -7,6 +7,8 @@ import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.BaseFragment;
 
+import java.util.List;
+
 /**
  * Единственный мост между кодом официального Telegram и кодом мода.
  *
@@ -52,7 +54,7 @@ public final class AurexHooks {
     }
 
     /**
-     * Поток апдейтов от сервера (режим шпиона).
+     * Апдейты, принятые из сети (режим шпиона).
      *
      * Вызывается до того, как Telegram применит обновление, поэтому удаляемое
      * или редактируемое сообщение ещё доступно в штатном кэше клиента.
@@ -63,6 +65,23 @@ public final class AurexHooks {
             if (updates instanceof TLRPC.Updates) {
                 SpyUpdatesObserver.onUpdates(accountId, (TLRPC.Updates) updates);
             }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * Единая воронка апдейтов клиента (режим шпиона).
+     *
+     * В отличие от {@link #onUpdatesReceived}, видит не только push из сокета, но и
+     * апдейты из ответов на собственные запросы и из difference — то есть всё, что
+     * произошло, пока приложение было закрыто. Именно поэтому точки перехвата две.
+     *
+     * Метод находится на горячем пути и вызывается на каждый пакет апдейтов:
+     * ранний выход по выключенным настройкам делает модуль, здесь только мост.
+     */
+    public static void onUpdateArray(int accountId, List<TLRPC.Update> updates) {
+        try {
+            SpyUpdatesObserver.onUpdateArray(accountId, updates);
         } catch (Throwable ignored) {
         }
     }
