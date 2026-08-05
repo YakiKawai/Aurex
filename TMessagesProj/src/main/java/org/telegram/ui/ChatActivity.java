@@ -30830,6 +30830,10 @@ public class ChatActivity extends BaseFragment implements
                 icons.add(R.drawable.msg_calendar2);
             }
 
+            // AUREX >>> spy: пункт «История правок» под «Удалить»
+            org.aurex.ui.AurexSpyChat.addHistoryItem(currentAccount, selectedObject, items, options, icons);
+            // AUREX <<<
+
             if (options.isEmpty() && optionsView == null) {
                 return false;
             }
@@ -45467,13 +45471,6 @@ public class ChatActivity extends BaseFragment implements
                 options.add(OPTION_COPY);
                 icons.add(R.drawable.msg_copy);
             }
-            // AUREX >>> spy-mode
-            if (org.aurex.ui.AurexSpyChat.hasRevisions(currentAccount, selectedObject)) {
-                items.add(LocaleController.getString(R.string.AurexSpyHistoryTitle));
-                options.add(org.aurex.ui.AurexSpyChat.OPTION_SPY_HISTORY);
-                icons.add(R.drawable.msg_edit);
-            }
-            // AUREX <<<
             items.add(LocaleController.getString(R.string.CancelSending));
             options.add(OPTION_CANCEL_SENDING);
             icons.add(R.drawable.msg_delete);
