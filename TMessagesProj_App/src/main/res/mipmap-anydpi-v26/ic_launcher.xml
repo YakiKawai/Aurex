@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AUREX: собственная иконка приложения, перекрывает ресурс апстрима -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/aurex_icon_background" />
+    <foreground android:drawable="@mipmap/aurex_icon_foreground" />
+</adaptive-icon>

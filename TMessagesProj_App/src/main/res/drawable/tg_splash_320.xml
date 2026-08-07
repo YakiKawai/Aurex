@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AUREX: стартовый экран Android 12+.
+  Перекрывает анимированный самолётик Telegram из TMessagesProj/res/drawable/tg_splash_320.xml.
+  Имя ресурса менять нельзя: на него ссылается стиль Theme.TMessages.Start.
+-->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@mipmap/aurex_splash"
+    android:gravity="fill" />
