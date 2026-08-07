@@ -44,6 +44,13 @@
     <string name="AurexSpyHistoryTitle">Edit history</string>
     <string name="AurexSpyDeletedActionUnavailable">This message was deleted, so the action is unavailable.</string>
 
+    <string name="AurexPaidFeatures">Paid features</string>
+    <string name="AurexPaidReactions">Star reactions</string>
+    <string name="AurexBlockStarReactions">Block star reactions</string>
+    <string name="AurexBlockStarReactionsInfo">Tapping a paid reaction no longer sends stars: the action is stopped before Telegram checks your balance or opens the purchase screen.</string>
+    <string name="AurexStarReactionsBlockedTitle">Paid reactions are disabled</string>
+    <string name="AurexStarReactionsBlockedText">You can\'t send star reactions while this feature is on.</string>
+
     <string name="AurexProfileBackground">Set background</string>
     <string name="AurexProfileBackgroundChange">Change background</string>
     <string name="AurexProfileBackgroundRemove">Remove background</string>

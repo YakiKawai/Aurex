@@ -44,6 +44,13 @@
     <string name="AurexSpyHistoryTitle">История правок</string>
     <string name="AurexSpyDeletedActionUnavailable">Сообщение удалено, поэтому действие недоступно.</string>
 
+    <string name="AurexPaidFeatures">Платные возможности</string>
+    <string name="AurexPaidReactions">Реакции за звёзды</string>
+    <string name="AurexBlockStarReactions">Заблокировать реакции за звёзды</string>
+    <string name="AurexBlockStarReactionsInfo">Нажатие на платную реакцию больше не отправляет звёзды: действие останавливается до того, как Telegram проверит баланс или откроет окно покупки.</string>
+    <string name="AurexStarReactionsBlockedTitle">Отправка платных реакций отключена</string>
+    <string name="AurexStarReactionsBlockedText">Вы не можете отправлять реакции за звёзды, пока включена эта функция.</string>
+
     <string name="AurexProfileBackground">Установить фон</string>
     <string name="AurexProfileBackgroundChange">Изменить фон</string>
     <string name="AurexProfileBackgroundRemove">Удалить фон</string>
