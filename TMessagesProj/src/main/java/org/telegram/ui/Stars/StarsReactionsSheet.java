@@ -521,6 +521,11 @@ public class StarsReactionsSheet extends BottomSheet implements NotificationCent
         buttonView.setText(StarsIntroActivity.replaceStars(formatString(R.string.StarsReactionSend, LocaleController.formatNumber(50, ',')), starRef), true);
         if (sendEnabled) {
             buttonView.setOnClickListener(v -> {
+                // AUREX >>> блокировка платных реакций до проверки баланса и открытия оплаты
+                if (org.aurex.core.AurexHooks.blockPaidReaction(context, resourcesProvider)) {
+                    return;
+                }
+                // AUREX <<<
                 if (sending) return;
 
                 final long totalStars = slider.getValue();

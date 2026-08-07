@@ -80,6 +80,11 @@ public class StarReactionsOverlay extends View {
         };
 
         longPressRunnable = () -> {
+            // AUREX >>> блокировка платных реакций: длинный тап открывает окно оплаты
+            if (org.aurex.core.AurexHooks.blockPaidReaction(chatActivity.getContext(), chatActivity.getResourceProvider())) {
+                return;
+            }
+            // AUREX <<<
             if (cell == null) return;
             try {
                 cell.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -353,6 +358,11 @@ public class StarReactionsOverlay extends View {
     }
 
     public void tap(float x, float y, boolean send, boolean ripple) {
+        // AUREX >>> блокировка платных реакций: повторные тапы по поднятому чипу
+        if (send && org.aurex.core.AurexHooks.blockPaidReaction(getContext(), chatActivity.getResourceProvider())) {
+            return;
+        }
+        // AUREX <<<
         if (cell == null || hidden) return;
 
         final MessageObject msg = getMessageObject();

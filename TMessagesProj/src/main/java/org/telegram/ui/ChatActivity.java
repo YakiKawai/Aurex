@@ -32622,6 +32622,12 @@ public class ChatActivity extends BaseFragment implements
     }
 
     public void selectReaction(View cell, MessageObject primaryMessage, ReactionsContainerLayout reactionsLayout, View fromView, float x, float y, ReactionsLayoutInBubble.VisibleReaction visibleReaction, boolean fromDoubleTap, boolean bigEmoji, boolean addToRecent, boolean withoutAnimation) {
+        // AUREX >>> блокировка платных реакций: главный вход, до баланса и оплаты
+        if (visibleReaction != null && visibleReaction.isStar
+                && org.aurex.core.AurexHooks.blockPaidReaction(getContext(), getResourceProvider())) {
+            return;
+        }
+        // AUREX <<<
         if (isInScheduleMode() || primaryMessage == null) {
             return;
         }

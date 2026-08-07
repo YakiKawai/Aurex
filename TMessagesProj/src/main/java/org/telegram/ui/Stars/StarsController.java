@@ -2128,6 +2128,11 @@ public class StarsController {
         boolean checkBalance,
         Long peer
     ) {
+        // AUREX >>> блокировка платных реакций: страховка на все пути отправки
+        if (org.aurex.core.AurexHooks.isPaidReactionBlocked()) {
+            return null;
+        }
+        // AUREX <<<
         final MessageId key = MessageId.from(messageObject);
         final StarsController s = StarsController.getInstance(currentAccount);
         final long totalStars = amount;
