@@ -26,6 +26,7 @@ public class AurexSettingsActivity extends UniversalFragment {
 
     private static final int BTN_GHOST = 1;
     private static final int BTN_SPY = 2;
+    private static final int BTN_PAID = 3;
 
     @Override
     public View createView(Context context) {
@@ -51,6 +52,7 @@ public class AurexSettingsActivity extends UniversalFragment {
         items.add(UItem.asHeader(getString(R.string.AurexSettingsCategories)));
         items.add(UItem.asSettingsCell(BTN_GHOST, R.drawable.msg_aurex_ghost, getString(R.string.AurexGhostMode)));
         items.add(UItem.asSettingsCell(BTN_SPY, R.drawable.msg_aurex_spy, getString(R.string.AurexSpyMode)));
+        items.add(UItem.asSettingsCell(BTN_PAID, R.drawable.msg_aurex_paid, getString(R.string.AurexPaidFeatures)));
         items.add(UItem.asShadow(AurexVersion.getFullVersion()));
     }
 
@@ -60,6 +62,8 @@ public class AurexSettingsActivity extends UniversalFragment {
             presentFragment(new AurexGhostSettingsActivity());
         } else if (item.id == BTN_SPY) {
             presentFragment(new AurexSpySettingsActivity());
+        } else if (item.id == BTN_PAID) {
+            presentFragment(new AurexPaidSettingsActivity());
         }
     }
 
