@@ -44,6 +44,11 @@ public final class AurexFeatures {
     public static final BoolPref SPY_SAVE_REACTIONS = new BoolPref("spy_save_reactions", true);
     public static final BoolPref SPY_SAVE_FOR_BOTS = new BoolPref("spy_save_for_bots", true);
 
+    // ~ Платные возможности
+    // Выключено по умолчанию: без явного согласия пользователя мод не меняет
+    // штатное поведение официального клиента.
+    public static final BoolPref BLOCK_STAR_REACTIONS = new BoolPref("paid_block_star_reactions", false);
+
     private static final List<BoolPref> ALL = Collections.unmodifiableList(Arrays.asList(
             SEND_READ_PACKETS,
             SEND_READ_STORIES,
@@ -62,7 +67,8 @@ public final class AurexFeatures {
             SPY_SAVE_MEDIA_PRIVATE_GROUPS,
             SPY_SAVE_FORMATTING,
             SPY_SAVE_REACTIONS,
-            SPY_SAVE_FOR_BOTS
+            SPY_SAVE_FOR_BOTS,
+            BLOCK_STAR_REACTIONS
     ));
 
     /** Все булевы настройки мода. Используется для массового сброса и отладки. */

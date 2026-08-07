@@ -1,11 +1,14 @@
 package org.aurex.core;
 
-import org.aurex.features.ghost.GhostRequestFilter;
+import android.content.Context;
+
+import org.aurex.features.paid.PaidReactions;
 import org.aurex.features.spy.SpyUpdatesObserver;
 import org.aurex.ui.AurexSettingsActivity;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.Theme;
 
 import java.util.List;
 
@@ -38,7 +41,7 @@ public final class AurexHooks {
     }
 
     /**
-     * Фильтр исходящих запросов (режим призрака).
+     * Фильтр исходящих запросов (режим призрака и другие сетевые страховки).
      *
      * Вызывается из ConnectionsManager на каждый запрос, поэтому любое исключение
      * здесь гасится: в худшем случае запрос уйдёт как в обычном Telegram.
@@ -47,7 +50,37 @@ public final class AurexHooks {
      */
     public static boolean shouldDropRequest(int accountId, TLObject request) {
         try {
-            return GhostRequestFilter.shouldDrop(accountId, request);
+            return AurexRequestFilter.shouldDrop(accountId, request);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Блокировка платной реакции в точке нажатия (функция "Заблокировать реакции за звёзды").
+     *
+     * Вызывается ДО любых проверок баланса и до открытия оплаты. Если функция включена —
+     * показывает предупреждение и возвращает true; вызывающий код обязан немедленно выйти.
+     *
+     * @return true, если действие нужно прервать.
+     */
+    public static boolean blockPaidReaction(Context context, Theme.ResourcesProvider resourcesProvider) {
+        try {
+            return PaidReactions.block(context, resourcesProvider);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Тихая проверка той же функции — без диалога.
+     *
+     * Нужна для страховочных точек в глубине апстрима, куда управление доходить не должно:
+     * предупреждение там уже показано выше по стеку, а дублировать его нельзя.
+     */
+    public static boolean isPaidReactionBlocked() {
+        try {
+            return PaidReactions.isBlocked();
         } catch (Throwable t) {
             return false;
         }
