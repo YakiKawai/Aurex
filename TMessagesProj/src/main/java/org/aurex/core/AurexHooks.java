@@ -2,6 +2,7 @@ package org.aurex.core;
 
 import android.content.Context;
 
+import org.aurex.features.paid.LocalPremium;
 import org.aurex.features.paid.PaidReactions;
 import org.aurex.features.spy.SpyUpdatesObserver;
 import org.aurex.ui.AurexSettingsActivity;
@@ -81,6 +82,35 @@ public final class AurexHooks {
     public static boolean isPaidReactionBlocked() {
         try {
             return PaidReactions.isBlocked();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Включён ли локальный Telegram Premium (функция "Локальный Premium").
+     *
+     * Врезка в UserConfig.isPremium(): отвечает на вопрос "премиум ли текущий аккаунт".
+     * Метод находится на очень горячем пути (вызывается при отрисовке списков),
+     * поэтому внутри — только чтение кэшированного значения настройки.
+     */
+    public static boolean isLocalPremium() {
+        try {
+            return LocalPremium.isEnabled();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Считать ли конкретного пользователя премиумом из-за локального Premium.
+     *
+     * Врезка в MessagesController.isPremiumUser(User): часть экранов спрашивает не про
+     * аккаунт, а про конкретного пользователя. Возвращает true только для себя.
+     */
+    public static boolean isLocalPremiumUser(int accountId, TLRPC.User user) {
+        try {
+            return LocalPremium.isLocalPremiumUser(accountId, user);
         } catch (Throwable t) {
             return false;
         }
