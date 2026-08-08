@@ -50,6 +50,9 @@
     <string name="AurexBlockStarReactionsInfo">Tapping a paid reaction no longer sends stars: the action is stopped before Telegram checks your balance or opens the purchase screen.</string>
     <string name="AurexStarReactionsBlockedTitle">Paid reactions are disabled</string>
     <string name="AurexStarReactionsBlockedText">You can\'t send star reactions while this feature is on.</string>
+    <string name="AurexLocalPremiumHeader">Telegram Premium</string>
+    <string name="AurexLocalPremium">Local Premium</string>
+    <string name="AurexLocalPremiumInfo">Unlocks the Premium interface on this device: limits on folders, bio and caption length, the number of reactions and premium stickers are lifted. The server still sees a regular account, so anything it checks on its side stays unavailable.</string>
 
     <string name="AurexProfileBackground">Set background</string>
     <string name="AurexProfileBackgroundChange">Change background</string>
