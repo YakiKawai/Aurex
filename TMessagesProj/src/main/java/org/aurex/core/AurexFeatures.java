@@ -48,6 +48,9 @@ public final class AurexFeatures {
     // Выключено по умолчанию: без явного согласия пользователя мод не меняет
     // штатное поведение официального клиента.
     public static final BoolPref BLOCK_STAR_REACTIONS = new BoolPref("paid_block_star_reactions", false);
+    // Локальный Telegram Premium. Как и в AyuGram, настройка одна на весь клиент,
+    // а не на каждый аккаунт: она подменяет ответ клиента на вопрос "я премиум?".
+    public static final BoolPref LOCAL_PREMIUM = new BoolPref("paid_local_premium", false);
 
     private static final List<BoolPref> ALL = Collections.unmodifiableList(Arrays.asList(
             SEND_READ_PACKETS,
@@ -68,7 +71,8 @@ public final class AurexFeatures {
             SPY_SAVE_FORMATTING,
             SPY_SAVE_REACTIONS,
             SPY_SAVE_FOR_BOTS,
-            BLOCK_STAR_REACTIONS
+            BLOCK_STAR_REACTIONS,
+            LOCAL_PREMIUM
     ));
 
     /** Все булевы настройки мода. Используется для массового сброса и отладки. */
