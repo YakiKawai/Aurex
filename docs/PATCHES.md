@@ -7,12 +7,14 @@
 Главный принцип: врезок должно быть как можно меньше, каждая из них состоит из
 одного вызова фасада из `org.aurex` и не содержит логики. Вся логика живёт в `org.aurex`.
 
-Документ разделён на два файла:
+Документ разделён на три файла:
 
 - этот — общие врезки (настройки, сеть, профиль);
 - `docs/PATCHES-SPY-CHAT.md` — врезки в `ui/ChatActivity.java` и
   `ui/Cells/ChatMessageCell.java`. Эти два файла апстрима самые большие и меняются
-  чаще всех, поэтому по ним удобнее вести отдельный список.
+  чаще всех, поэтому по ним удобнее вести отдельный список;
+- `docs/PATCHES-PAID.md` — врезки раздела «Платные возможности»: блокировка
+  реакций за звёзды и локальный Telegram Premium.
 
 Быстрая проверка, что список актуален:
 
@@ -32,10 +34,14 @@ git diff master...dev --name-only -- TMessagesProj/src/main/java/org/telegram
 |---|---|---|---|
 | `ui/SettingsActivity.java` | 2 | пункт «Aurex» в настройках | раздел 1 |
 | `tgnet/ConnectionsManager.java` | 2 | режим призрака + захват апдейтов из сокета | разделы 2 и 4 |
-| `messenger/MessagesController.java` | 1 | захват апдейтов из всех остальных каналов | раздел 4 |
+| `messenger/MessagesController.java` | 2 | захват апдейтов; локальный Premium | раздел 4; PATCHES-PAID.md |
+| `messenger/UserConfig.java` | 1 | локальный Premium | PATCHES-PAID.md |
 | `ui/ProfileActivity.java` | 6 | фон шапки профиля | раздел 3 |
-| `ui/ChatActivity.java` | 8 | режим шпиона в чате | PATCHES-SPY-CHAT.md |
+| `ui/ChatActivity.java` | 9 | режим шпиона (8); реакции за звёзды (1) | PATCHES-SPY-CHAT.md; PATCHES-PAID.md |
 | `ui/Cells/ChatMessageCell.java` | 3 | иконка удалённого сообщения | PATCHES-SPY-CHAT.md |
+| `ui/Stars/StarsController.java` | 1 | реакции за звёзды | PATCHES-PAID.md |
+| `ui/Stars/StarsReactionsSheet.java` | 1 | реакции за звёзды | PATCHES-PAID.md |
+| `ui/Stars/StarReactionsOverlay.java` | 2 | реакции за звёзды | PATCHES-PAID.md |
 
 ---
 
@@ -99,6 +105,10 @@ if (org.aurex.core.AurexHooks.shouldDropRequest(currentAccount, object)) {
 
 Список типов запросов, которые фильтруются, см. в
 `org/aurex/features/ghost/GhostRequestFilter.java`.
+
+Сам фильтр общий для всего мода: `AurexRequestFilter` спрашивает по очереди все
+модули, которые умеют глушить запросы (сейчас — режим призрака и блокировка
+платных реакций). Новые функции с сетевым бэкстопом новых врезок не требуют.
 
 ---
 
