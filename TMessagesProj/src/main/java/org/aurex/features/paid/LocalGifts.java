@@ -8,7 +8,9 @@ import org.aurex.core.AurexConfig;
 import org.aurex.core.AurexFeatures;
 import org.aurex.core.AurexNotifications;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
@@ -63,17 +65,24 @@ import java.util.List;
  * говорит штатному интерфейсу «оплата прошла», и дальше Telegram сам делает то
  * же, что и всегда: закрывает лист подарка своей анимацией и показывает свой
  * bulletin. Порядок шагов повторяет настоящую отправку — сначала успех, потом
- * карточка в чате, потом переход в чат, — поэтому ни один шаг не перебивает
- * предыдущий (в прошлой версии переход стартовал слишком рано и обрывал
- * анимацию).
+ * карточка в чате, потом переход в чат, потом салют, — поэтому ни один шаг не
+ * перебивает предыдущий (в прошлой версии переход стартовал слишком рано и
+ * обрывал анимацию).
+ *
+ * ПРО САЛЮТ. У NFT он появлялся сразу и без кода мода: витрина перепродажи
+ * ({@code ResaleGiftsFragment}) держит штатный {@code FireworksOverlay} и запускает
+ * его по успеху оплаты. А обычные подарки апстрим отправляет через
+ * {@code SendGiftSheet}, где салюта нет ни в одной строке. Поэтому мод добавляет
+ * салют только там, где его нет у апстрима, и делает это его же компонентом —
+ * см. {@link LocalGiftsFireworks}. Два салюта одновременно появиться не могут.
  *
  * ВТОРОЙ РУБЕЖ — сеть. Подменённый баланс делает штатный интерфейс «щедрым»:
  * он считает, что звёзды есть. Поэтому, пока функция включена,
  * {@link #shouldDropRequest(TLObject)} не выпускает наружу запросы, способные
- * списать настоящие звёзды: оплату формы, операции с подарками, платную
- * реакцию, платное сообщение. Запросы ЧТЕНИЯ при этом проходят свободно —
- * иначе каталог подарков и витрина NFT не грузятся, а интерфейс бесконечно
- * повторяет неудавшиеся запросы.
+ * списать настоящие звёзды: оплату формы, улучшение и передачу подарков,
+ * платную реакцию, платное сообщение. Запросы ЧТЕНИЯ и управление уже
+ * существующими настоящими подарками проходят свободно — иначе мод мешает
+ * обычной работе Telegram.
  */
 public final class LocalGifts {
 
@@ -102,6 +111,14 @@ public final class LocalGifts {
      * закрывшегося листа и анимация обрывается.
      */
     private static final long OPEN_CHAT_DELAY = 550L;
+
+    /**
+     * Пауза перед салютом.
+     *
+     * Самый последний шаг: к этому моменту переход в чат уже завершён, и
+     * салют виден именно там, где появился подарок, а не на уезжающем экране.
+     */
+    private static final long FIREWORKS_DELAY = 900L;
 
     /**
      * Склейка уведомлений об изменении баланса.
@@ -250,6 +267,8 @@ public final class LocalGifts {
      *
      * Вызывается врезкой из {@code StarsController.buyStarGift(...)}.
      *
+     * Салют запрашиваем сами: штатный {@code SendGiftSheet} его не показывает.
+     *
      * Если функция включена, метод ВСЕГДА возвращает true, в том числе при
      * внутренней ошибке мода. Это сознательное решение: единственный безопасный
      * ответ при сбое — не дать управлению уйти в реальную оплату. Хуже
@@ -272,7 +291,7 @@ public final class LocalGifts {
         }
         try {
             return deliver(accountId, gift, anonymous, upgraded, dialogId,
-                    text != null ? text.text : null, priceOf(gift, upgraded), whenDone);
+                    text != null ? text.text : null, priceOf(gift, upgraded), true, whenDone);
         } catch (Throwable e) {
             FileLog.e(e);
             finish(whenDone, false);
@@ -286,6 +305,9 @@ public final class LocalGifts {
      * Вызывается врезкой из {@code StarsController.buyResellingGift(...)} — это
      * отдельный путь апстрима, который не проходит через buyStarGift. Без этой
      * врезки выбранный NFT ушёл бы в настоящую оплату.
+     *
+     * Салют здесь НЕ запрашивается: витрина перепродажи покажет свой в ответ
+     * на успех, и второй был бы лишним.
      *
      * Цена берётся из уже полученной формы оплаты: это ровно та сумма, которую
      * пользователь видел на кнопке. Форма — единственное, что мод от сервера
@@ -302,7 +324,7 @@ public final class LocalGifts {
             return false;
         }
         try {
-            return deliver(accountId, gift, false, false, dialogId, null, resalePrice(form, gift), whenDone);
+            return deliver(accountId, gift, false, false, dialogId, null, resalePrice(form, gift), false, whenDone);
         } catch (Throwable e) {
             FileLog.e(e);
             finish(whenDone, false);
@@ -333,44 +355,57 @@ public final class LocalGifts {
      * Сетевой рубеж: пока функция включена, наружу не уходит ничего, что может
      * списать настоящие звёзды.
      *
-     * ЧТЕНИЕ ПРОПУСКАЕТСЯ ВСЕГДА. Прошлая версия блокировала все запросы
-     * payments.*StarGift*, включая получение каталога подарков и витрины NFT.
-     * Ответа интерфейс не получал и запрашивал снова и снова: лишний трафик,
-     * лишние загрузки картинок и разрастание кэша на ровном месте. Ни один
-     * запрос вида get* звёзд не тратит, поэтому им здесь не место.
+     * ИМЕНА НОРМАЛИЗУЮТСЯ. Схема Telegram называет запросы неоднородно: часть
+     * классов лежит в TLRPC с префиксом ({@code TL_payments_getPaymentForm}), а
+     * часть — в TL_stars без него ({@code getStarGifts},
+     * {@code toggleStarGiftsPinnedToTop}). Правило, написанное под одно из двух
+     * написаний, молча не работает для второго — именно на этом была ошибка
+     * прошлых версий. Поэтому сравниваем не «как написано», а имя без префикса.
      *
-     * Список блокировок намеренно шире подарков. Причина в подменённом балансе:
-     * любой другой экран Telegram тоже считает, что звёзды есть, и мог бы
-     * отправить настоящую оплату. Пока включён локальный режим, звёзды не
-     * тратятся вообще — это цена честной подмены баланса и одновременно её
-     * страховка.
+     * ЧТО ПРОПУСКАЕМ. Всё чтение ({@code get*}) — каталог подарков, витрина
+     * перепродажи, форма оплаты, профиль. Заглушённое чтение ничего не
+     * защищает, зато заставляет интерфейс повторять запросы по кругу и заново
+     * тянуть стикеры и эмодзи — так кэш и раздувался до сотен мегабайт.
+     * Также пропускается управление уже существующими настоящими подарками
+     * (скрыть, закрепить, обменять на звёзды): звёзд оно не тратит, а ломать
+     * обычную работу Telegram из-за включённого локального режима мод не должен.
+     *
+     * ЧТО БЛОКИРУЕМ. Оплату формы звёздами (единый шлюз всех трат: подарок,
+     * апгрейд, перепродажа, платный контент), прямые траты на подарках
+     * (покупка, улучшение, передача), платную реакцию и платные сообщения.
+     * Опознаём по глаголу в имени, а не по точному совпадению: тогда правило
+     * продолжит работать и после переименований в новых версиях схемы.
      */
     public static boolean shouldDropRequest(TLObject request) {
         if (request == null || !isEnabled()) {
             return false;
         }
-        final String name = request.getClass().getSimpleName();
-        // Чтение: каталог подарков, витрина перепродажи, форма оплаты, профиль.
-        if (name.startsWith("TL_payments_get") || name.startsWith("TL_stars_get")) {
+        final String name = normalizedName(request);
+        // Чтение пропускается всегда: ни один get* звёзд не тратит.
+        if (name.startsWith("get")) {
             return false;
         }
-        // Оплата формы звёздами — единственный способ списать звёзды за покупку.
-        if (request instanceof TL_stars.TL_payments_sendStarsForm) {
+        // Оплата формы звёздами — главный шлюз любого списания.
+        if (request instanceof TL_stars.TL_payments_sendStarsForm || name.equals("sendStarsForm")) {
             return true;
         }
-        // Операции с подарками, которые апстрим оплачивает звёздами напрямую:
-        // улучшение, передача, перепродажа. Опознаём по имени конструктора, чтобы
-        // новая версия Telegram не создала дыру и чтобы не ссылаться на классы,
-        // которых в текущей схеме может не быть.
-        if (name.startsWith("TL_payments_") && name.contains("StarGift")) {
+        // Прямые траты на подарках, минующие форму: покупка, улучшение, передача.
+        if (name.contains("StarGift")
+                && (name.startsWith("buy") || name.startsWith("upgrade")
+                || name.startsWith("transfer") || name.startsWith("send"))) {
             return true;
         }
         // Платная реакция звёздами.
-        if (name.equals("TL_messages_sendPaidReaction")) {
+        if (name.equals("sendPaidReaction")) {
             return true;
         }
         // Платные сообщения: стоимость передаётся полем в самом запросе отправки.
-        return name.startsWith("TL_messages_send") && hasPaidStars(request);
+        // Проверяем только отправку и пересылку, чтобы не лезть в reflection на
+        // каждый исходящий запрос приложения.
+        if (name.startsWith("send") || name.startsWith("forward")) {
+            return hasPaidStars(request);
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------
@@ -383,9 +418,13 @@ public final class LocalGifts {
      * Порядок шагов повторяет настоящую отправку Telegram:
      *   1) интерфейс узнаёт об успехе и закрывает лист своей анимацией;
      *   2) карточка подарка появляется в чате;
-     *   3) если чат не открыт — выполняется переход в него.
+     *   3) если чат не открыт — выполняется переход в него;
+     *   4) и только в самом конце — салют.
      * Именно в таком порядке, а не наоборот: иначе каждый следующий шаг
      * обрывает анимацию предыдущего.
+     *
+     * @param fireworks нужен ли свой салют; для витрины перепродажи не нужен — там
+     *                  апстрим показывает его сам
      */
     private static boolean deliver(
             int accountId,
@@ -395,6 +434,7 @@ public final class LocalGifts {
             long dialogId,
             String text,
             long price,
+            boolean fireworks,
             Utilities.Callback2<Boolean, String> whenDone
     ) {
         if (gift == null || dialogId == 0 || LocalGiftsStore.ownerId(accountId) == 0) {
@@ -436,6 +476,10 @@ public final class LocalGifts {
         }, SHOW_GIFT_DELAY);
         // 3. И, если нужный чат не открыт, Telegram переходит в него штатно.
         openChat(accountId, dialogId);
+        // 4. Завершающий штрих — штатный салют там, где апстрим его не показывает.
+        if (fireworks) {
+            AndroidUtilities.runOnUIThread(LocalGiftsFireworks::show, FIREWORKS_DELAY);
+        }
         return true;
     }
 
@@ -460,162 +504,8 @@ public final class LocalGifts {
         return price > 0 ? price : priceOf(gift, false);
     }
 
-    /** Есть ли в запросе отправки сообщения оплата звёздами. */
-    private static boolean hasPaidStars(TLObject request) {
-        try {
-            final Field field = request.getClass().getField("allow_paid_stars");
-            final Object value = field.get(request);
-            return value instanceof Long && (Long) value > 0;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
     /**
-     * Возврат в чат после отправки.
+     * Имя запроса без префикса схемы.
      *
-     * Так ведёт себя штатный сценарий: подарок отправляют из профиля или из
-     * самого чата, а увидеть его нужно в переписке. Если нужный чат уже открыт —
-     * не делаем ничего, иначе открываем его штатным способом Telegram
-     * (ChatActivity с обычными аргументами), без собственных экранов и анимаций.
-     */
-    private static void openChat(int accountId, long dialogId) {
-        AndroidUtilities.runOnUIThread(() -> {
-            try {
-                final BaseFragment last = LaunchActivity.getSafeLastFragment();
-                if (last == null) {
-                    return;
-                }
-                if (last instanceof ChatActivity
-                        && ((ChatActivity) last).getDialogId() == dialogId
-                        && last.getCurrentAccount() == accountId) {
-                    return;
-                }
-                final Bundle args = new Bundle();
-                if (dialogId >= 0) {
-                    args.putLong("user_id", dialogId);
-                } else {
-                    args.putLong("chat_id", -dialogId);
-                }
-                last.presentFragment(new ChatActivity(args));
-            } catch (Throwable e) {
-                FileLog.e(e);
-            }
-        }, OPEN_CHAT_DELAY);
-    }
-
-    private static void finish(Utilities.Callback2<Boolean, String> whenDone, boolean success) {
-        if (whenDone == null) {
-            return;
-        }
-        // Апстрим вызывает этот колбэк с главного потока; повторяем то же поведение,
-        // иначе штатный лист подарка попытается обновиться из чужого потока.
-        AndroidUtilities.runOnUIThread(() -> {
-            try {
-                whenDone.run(success, null);
-            } catch (Throwable e) {
-                FileLog.e(e);
-            }
-        });
-    }
-
-    /**
-     * Диалоги, в которых есть локальные подарки, по всем аккаунтам.
-     *
-     * Нужно именно списком: лента чата пересобирается только на уведомление про
-     * свой диалог, поэтому при выключении функции надо разослать его по всем
-     * затронутым чатам — иначе подарки остались бы на экране до перезахода.
-     */
-    private static List<Long> dialogsWithGifts() {
-        final List<Long> dialogs = new ArrayList<>();
-        try {
-            for (int accountId = 0; accountId < UserConfig.MAX_ACCOUNT_COUNT; accountId++) {
-                final List<LocalGiftsStore.Entry> entries = LocalGiftsStore.list(accountId);
-                for (int i = 0; i < entries.size(); i++) {
-                    final LocalGiftsStore.Entry entry = entries.get(i);
-                    if (entry != null && entry.dialogId != 0 && !dialogs.contains(entry.dialogId)) {
-                        dialogs.add(entry.dialogId);
-                    }
-                }
-            }
-        } catch (Throwable e) {
-            FileLog.e(e);
-        }
-        return dialogs;
-    }
-
-    private static void notifyFeedChanged(List<Long> dialogIds) {
-        if (dialogIds == null || dialogIds.isEmpty()) {
-            return;
-        }
-        for (int i = 0; i < dialogIds.size(); i++) {
-            notifyFeedChanged(dialogIds.get(i));
-        }
-    }
-
-    private static void notifyFeedChanged(long dialogId) {
-        if (dialogId == 0) {
-            return;
-        }
-        AndroidUtilities.runOnUIThread(() -> {
-            for (int accountId = 0; accountId < UserConfig.MAX_ACCOUNT_COUNT; accountId++) {
-                try {
-                    if (!UserConfig.isValidAccount(accountId)) {
-                        continue;
-                    }
-                    NotificationCenter.getInstance(accountId)
-                            .postNotificationName(AurexNotifications.LOCAL_GIFTS_CHANGED, dialogId);
-                } catch (Throwable e) {
-                    FileLog.e(e);
-                }
-            }
-        });
-    }
-
-    /**
-     * Сообщает интерфейсу, что баланс изменился.
-     *
-     * Это штатное уведомление апстрима: его слушают шапка подарков, магазин
-     * звёзд и кнопки отправки. Мод не перерисовывает чужие экраны сам — он
-     * лишь говорит им то же, что сказал бы сервер.
-     *
-     * Рассылки склеиваются: ползунок вызывает изменение баланса на каждое
-     * движение пальца, а интерфейсу важно только итоговое значение, которое он
-     * всё равно спрашивает сам.
-     */
-    private static void notifyBalanceChanged() {
-        if (balanceNotifyScheduled) {
-            return;
-        }
-        balanceNotifyScheduled = true;
-        AndroidUtilities.runOnUIThread(() -> {
-            balanceNotifyScheduled = false;
-            for (int accountId = 0; accountId < UserConfig.MAX_ACCOUNT_COUNT; accountId++) {
-                try {
-                    if (!UserConfig.isValidAccount(accountId)) {
-                        continue;
-                    }
-                    NotificationCenter.getInstance(accountId)
-                            .postNotificationName(NotificationCenter.starBalanceUpdated);
-                } catch (Throwable e) {
-                    FileLog.e(e);
-                }
-            }
-        }, BALANCE_NOTIFY_DELAY);
-    }
-
-    /** Штатный bulletin Telegram: своей вёрстки у сообщений мода нет. */
-    private static void showBulletin(CharSequence text) {
-        AndroidUtilities.runOnUIThread(() -> {
-            try {
-                final BaseFragment fragment = LaunchActivity.getSafeLastFragment();
-                if (fragment == null) {
-                    return;
-                }
-                BulletinFactory.of(fragment).createErrorBulletin(text).show();
-            } catch (Throwable e) {
-                FileLog.e(e);
-            }
-        });
-    }
-}
+     * {@code TL_payments_sendStarsForm} и {@code sendStarsForm} — один и тот же
+     * запрос, но объявленный в разных ф
