@@ -5,6 +5,7 @@ import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_stars;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,6 +24,13 @@ import java.util.WeakHashMap;
  * предпросмотр подарка в {@code SendGiftSheet}. Мод переиспользует этот приём:
  * собственной вёрстки подарка у нас нет вообще, а значит локальный подарок
  * выглядит и анимируется точно как настоящий.
+ *
+ * ПОЧЕМУ КАРТОЧКА СОБИРАЕТСЯ ЗАНОВО. Ячейка берёт картинку подарка из поля
+ * {@code sticker}. У NFT это поле пустое — модель лежит в атрибутах, и прошлая
+ * версия показывала чёрный квадрат. Поэтому для показа собирается обычный
+ * {@code TL_starGift}, в который подставлен сохранённый документ. Это тот же путь
+ * отрисовки, который уже работает для обычных подарков: одна ветка кода на
+ * оба случая и никаких собственных вариантов отображения.
  *
  * ПОЧЕМУ НЕ ПИШЕМ В БАЗУ TELEGRAM. Запись в {@code messages_v2} означала бы
  * борьбу за id с сервером и риск, что локальная запись переживёт функцию и
@@ -151,7 +159,7 @@ public final class LocalGiftsFeed {
      */
     private static TLRPC.MessageAction buildAction(LocalGiftsStore.Entry entry) {
         final TLRPC.TL_messageActionStarGift action = new TLRPC.TL_messageActionStarGift();
-        action.gift = entry.gift;
+        action.gift = buildGift(entry);
         action.flags |= 2;
         action.message = new TLRPC.TL_textWithEntities();
         action.message.text = entry.text != null ? entry.text : "";
@@ -160,10 +168,28 @@ public final class LocalGiftsFeed {
         }
         action.name_hidden = entry.anonymous;
         action.can_upgrade = entry.upgraded;
-        action.upgrade_stars = entry.upgraded ? entry.gift.upgrade_stars : 0;
-        action.convert_stars = entry.upgraded ? 0 : entry.gift.convert_stars;
+        action.upgrade_stars = entry.upgradeStars;
+        action.convert_stars = entry.convertStars;
         action.forceIn = true;
         return action;
+    }
+
+    /**
+     * Подарок для карточки.
+     *
+     * Всегда обычный {@code TL_starGift}, даже если отправляли NFT: в поле
+     * {@code sticker} кладётся сохранённый документ подарка (у NFT — его
+     * модель). Так ячейка идёт по единственной проверенной ветке отрисовки и
+     * рисует картинку с обычной анимацией стикера вместо пустого места.
+     */
+    private static TL_stars.StarGift buildGift(LocalGiftsStore.Entry entry) {
+        final TL_stars.TL_starGift gift = new TL_stars.TL_starGift();
+        gift.id = entry.giftId;
+        gift.sticker = entry.document;
+        gift.stars = entry.priceStars;
+        gift.convert_stars = entry.convertStars;
+        gift.upgrade_stars = entry.upgradeStars;
+        return gift;
     }
 
     /**
