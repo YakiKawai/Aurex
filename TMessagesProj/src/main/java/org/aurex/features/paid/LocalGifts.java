@@ -41,7 +41,7 @@ import java.util.List;
  *
  *     баланс = выбранное ползунком значение − локально израсходованное
  *
- * АРХИТЕКТУРА ПЕРЕХВАТА. Все четыре врезки стоят в одном файле апстрима —
+ * АРХИТЕКТУРА ПЕРЕХВАТА. Все пять врезок стоят в одном файле апстрима —
  * StarsController.java — и каждая из них состоит из вызова фасада AurexHooks:
  *
  *   1. getBalance(...)      — пока функция включена, штатный интерфейс видит
@@ -59,12 +59,21 @@ import java.util.List;
  * payments.getPaymentForm и до payments.sendStarsForm. Реальный payment flow не
  * начинается вообще, а не прерывается по ходу.
  *
+ * ПОЧЕМУ ОТПРАВКА ВЫГЛЯДИТ КАК НАСТОЯЩАЯ. Своих анимаций у мода нет. Он лишь
+ * говорит штатному интерфейсу «оплата прошла», и дальше Telegram сам делает то
+ * же, что и всегда: закрывает лист подарка своей анимацией и показывает свой
+ * bulletin. Порядок шагов повторяет настоящую отправку — сначала успех, потом
+ * карточка в чате, потом переход в чат, — поэтому ни один шаг не перебивает
+ * предыдущий (в прошлой версии переход стартовал слишком рано и обрывал
+ * анимацию).
+ *
  * ВТОРОЙ РУБЕЖ — сеть. Подменённый баланс делает штатный интерфейс «щедрым»:
  * он считает, что звёзды есть. Поэтому, пока функция включена,
- * {@link #shouldDropRequest(TLObject)} не выпускает наружу НИ ОДИН запрос,
- * способный списать настоящие звёзды: ни оплату формы, ни операции с
- * подарками, ни платную реакцию, ни платное сообщение. Это не украшение, а
- * обязательная часть архитектуры: без неё подмена баланса была бы опасной.
+ * {@link #shouldDropRequest(TLObject)} не выпускает наружу запросы, способные
+ * списать настоящие звёзды: оплату формы, операции с подарками, платную
+ * реакцию, платное сообщение. Запросы ЧТЕНИЯ при этом проходят свободно —
+ * иначе каталог подарков и витрина NFT не грузятся, а интерфейс бесконечно
+ * повторяет неудавшиеся запросы.
  */
 public final class LocalGifts {
 
@@ -77,12 +86,45 @@ public final class LocalGifts {
     private static final String KEY_AMOUNT = "paid_local_gifts_amount";
 
     /**
+     * Пауза перед появлением карточки в чате.
+     *
+     * Ровно столько штатный лист подарка уезжает с экрана. Подарок, возникший
+     * под ещё открытым листом, пользователь просто не увидит: настоящая
+     * отправка выглядит как «лист закрылся — подарок прилетел».
+     */
+    private static final long SHOW_GIFT_DELAY = 350L;
+
+    /**
      * Пауза перед возвратом в чат.
      *
-     * Штатный лист подарка закрывается своей анимацией; переход выполняется
-     * после неё, иначе экран чата въезжает под ещё открытую шторку.
+     * Больше предыдущей: сначала штатная анимация успеха, потом карточка, и
+     * только затем переход. Иначе экран чата въезжает поверх ещё не
+     * закрывшегося листа и анимация обрывается.
      */
-    private static final long OPEN_CHAT_DELAY = 200L;
+    private static final long OPEN_CHAT_DELAY = 550L;
+
+    /**
+     * Склейка уведомлений об изменении баланса.
+     *
+     * Ползунок дёргает setAmount на каждое движение пальца. Без склейки на
+     * каждое такое движение уходила бы рассылка по всем аккаунтам, а любой
+     * открытый экран звёзд перестраивался бы десятки раз в секунду.
+     */
+    private static final long BALANCE_NOTIFY_DELAY = 120L;
+
+    /** Значение ползунка в памяти: баланс спрашивают из отрисовки интерфейса. */
+    private static volatile int amountCache = Integer.MIN_VALUE;
+
+    /**
+     * Готовый объект баланса на аккаунт.
+     *
+     * Пересоздавать его на каждый запрос нельзя: штатный интерфейс спрашивает
+     * баланс при каждой перерисовке, и новый объект на каждый кадр — это и
+     * лишний мусор, и повод для интерфейса считать, что баланс изменился.
+     */
+    private static final TL_stars.StarsAmount[] BALANCE_CACHE = new TL_stars.StarsAmount[UserConfig.MAX_ACCOUNT_COUNT];
+
+    private static volatile boolean balanceNotifyScheduled;
 
     private LocalGifts() {
     }
@@ -120,6 +162,7 @@ public final class LocalGifts {
         // узнать, какой именно чат надо перерисовать.
         final List<Long> affected = dialogsWithGifts();
         AurexFeatures.LOCAL_GIFTS.set(enabled);
+        amountCache = Integer.MIN_VALUE;
         if (enabled) {
             // Включение = полный баланс: расход прошлой сессии не переносится.
             LocalGiftsStore.resetSpentAllAccounts();
@@ -134,7 +177,12 @@ public final class LocalGifts {
 
     /** Текущее значение ползунка — оно же полный локальный баланс. */
     public static int getAmount() {
-        return Utilities.clamp(AurexConfig.getInt(KEY_AMOUNT, DEFAULT_AMOUNT), MAX_AMOUNT, MIN_AMOUNT);
+        int cached = amountCache;
+        if (cached == Integer.MIN_VALUE) {
+            cached = Utilities.clamp(AurexConfig.getInt(KEY_AMOUNT, DEFAULT_AMOUNT), MAX_AMOUNT, MIN_AMOUNT);
+            amountCache = cached;
+        }
+        return cached;
     }
 
     /**
@@ -152,6 +200,7 @@ public final class LocalGifts {
         if (value == getAmount()) {
             return;
         }
+        amountCache = value;
         AurexConfig.putInt(KEY_AMOUNT, value);
         LocalGiftsStore.resetSpentAllAccounts();
         // Если интерфейс подарков открыт поверх настроек, он обновит остаток сам:
@@ -172,10 +221,20 @@ public final class LocalGifts {
      *
      * Значение собирается штатным конструктором {@code StarsAmount.ofStars},
      * поэтому для интерфейса это обычный баланс: та же вёрстка, те же анимации
-     * пересчёта, те же проверки «хватает / не хватает».
+     * пересчёта, те же проверки «хватает / не хватает». Объект переиспользуется,
+     * пока сумма не изменилась.
      */
     public static TL_stars.StarsAmount starsBalance(int accountId) {
-        return TL_stars.StarsAmount.ofStars(getBalance(accountId));
+        final long value = getBalance(accountId);
+        if (accountId < 0 || accountId >= BALANCE_CACHE.length) {
+            return TL_stars.StarsAmount.ofStars(value);
+        }
+        TL_stars.StarsAmount cached = BALANCE_CACHE[accountId];
+        if (cached == null || cached.amount != value) {
+            cached = TL_stars.StarsAmount.ofStars(value);
+            BALANCE_CACHE[accountId] = cached;
+        }
+        return cached;
     }
 
     /** Стоимость подарка в звёздах — так же, как её считает штатный SendGiftSheet. */
@@ -274,23 +333,31 @@ public final class LocalGifts {
      * Сетевой рубеж: пока функция включена, наружу не уходит ничего, что может
      * списать настоящие звёзды.
      *
-     * Список намеренно шире подарков. Причина в подменённом балансе: любой
-     * другой экран Telegram тоже считает, что звёзды есть, и мог бы отправить
-     * настоящую оплату. Пока включён локальный режим, звёзды не тратятся вообще
-     * — это цена честной подмены баланса и одновременно её страховка.
+     * ЧТЕНИЕ ПРОПУСКАЕТСЯ ВСЕГДА. Прошлая версия блокировала все запросы
+     * payments.*StarGift*, включая получение каталога подарков и витрины NFT.
+     * Ответа интерфейс не получал и запрашивал снова и снова: лишний трафик,
+     * лишние загрузки картинок и разрастание кэша на ровном месте. Ни один
+     * запрос вида get* звёзд не тратит, поэтому им здесь не место.
      *
-     * Ничего не показывает: объяснение уже показано выше по стеку, а сюда
-     * управление в нормальной работе не доходит.
+     * Список блокировок намеренно шире подарков. Причина в подменённом балансе:
+     * любой другой экран Telegram тоже считает, что звёзды есть, и мог бы
+     * отправить настоящую оплату. Пока включён локальный режим, звёзды не
+     * тратятся вообще — это цена честной подмены баланса и одновременно её
+     * страховка.
      */
     public static boolean shouldDropRequest(TLObject request) {
         if (request == null || !isEnabled()) {
+            return false;
+        }
+        final String name = request.getClass().getSimpleName();
+        // Чтение: каталог подарков, витрина перепродажи, форма оплаты, профиль.
+        if (name.startsWith("TL_payments_get") || name.startsWith("TL_stars_get")) {
             return false;
         }
         // Оплата формы звёздами — единственный способ списать звёзды за покупку.
         if (request instanceof TL_stars.TL_payments_sendStarsForm) {
             return true;
         }
-        final String name = request.getClass().getSimpleName();
         // Операции с подарками, которые апстрим оплачивает звёздами напрямую:
         // улучшение, передача, перепродажа. Опознаём по имени конструктора, чтобы
         // новая версия Telegram не создала дыру и чтобы не ссылаться на классы,
@@ -313,8 +380,12 @@ public final class LocalGifts {
     /**
      * Общая часть обеих отправок: проверка кошелька, запись подарка, показ.
      *
-     * Порядок шагов повторяет штатный: сначала подарок появляется в чате, потом
-     * интерфейсу сообщается об успехе, и только затем выполняется переход в чат.
+     * Порядок шагов повторяет настоящую отправку Telegram:
+     *   1) интерфейс узнаёт об успехе и закрывает лист своей анимацией;
+     *   2) карточка подарка появляется в чате;
+     *   3) если чат не открыт — выполняется переход в него.
+     * Именно в таком порядке, а не наоборот: иначе каждый следующий шаг
+     * обрывает анимацию предыдущего.
      */
     private static boolean deliver(
             int accountId,
@@ -345,20 +416,25 @@ public final class LocalGifts {
         entry.anonymous = anonymous;
         entry.upgraded = upgraded;
         entry.text = text;
-        entry.gift = gift;
+        entry.giftId = gift.id;
+        entry.convertStars = upgraded ? 0 : gift.convert_stars;
+        entry.upgradeStars = upgraded ? gift.upgrade_stars : 0;
+        // Картинку достаём штатным способом Telegram: у обычного подарка это его
+        // стикер, у NFT — модель. Сам TL-объект подарка не сохраняем.
+        entry.document = LocalGiftsStore.documentOf(gift);
 
         LocalGiftsStore.add(accountId, entry);
         LocalGiftsStore.addSpent(accountId, price);
 
-        // Подарок появляется в открытом чате сразу, без повторного входа.
-        notifyFeedChanged(dialogId);
-        // Остаток на шапке подарков пересчитывается тем же уведомлением, которым
-        // апстрим сообщает об изменении баланса.
-        notifyBalanceChanged();
-        // Для штатного интерфейса отправка завершилась успешно: он сам закроет
-        // лист подарка своей анимацией и выполнит остальные шаги успеха.
+        // 1. Для штатного интерфейса отправка завершилась успешно: он сам закроет
+        //    лист подарка своей анимацией и выполнит остальные шаги успеха.
         finish(whenDone, true);
-        // И вернёт пользователя туда, где подарок видно.
+        // 2. Подарок появляется в чате, когда лист уже ушёл с экрана.
+        AndroidUtilities.runOnUIThread(() -> {
+            notifyFeedChanged(dialogId);
+            notifyBalanceChanged();
+        }, SHOW_GIFT_DELAY);
+        // 3. И, если нужный чат не открыт, Telegram переходит в него штатно.
         openChat(accountId, dialogId);
         return true;
     }
@@ -502,9 +578,18 @@ public final class LocalGifts {
      * Это штатное уведомление апстрима: его слушают шапка подарков, магазин
      * звёзд и кнопки отправки. Мод не перерисовывает чужие экраны сам — он
      * лишь говорит им то же, что сказал бы сервер.
+     *
+     * Рассылки склеиваются: ползунок вызывает изменение баланса на каждое
+     * движение пальца, а интерфейсу важно только итоговое значение, которое он
+     * всё равно спрашивает сам.
      */
     private static void notifyBalanceChanged() {
+        if (balanceNotifyScheduled) {
+            return;
+        }
+        balanceNotifyScheduled = true;
         AndroidUtilities.runOnUIThread(() -> {
+            balanceNotifyScheduled = false;
             for (int accountId = 0; accountId < UserConfig.MAX_ACCOUNT_COUNT; accountId++) {
                 try {
                     if (!UserConfig.isValidAccount(accountId)) {
@@ -516,7 +601,7 @@ public final class LocalGifts {
                     FileLog.e(e);
                 }
             }
-        });
+        }, BALANCE_NOTIFY_DELAY);
     }
 
     /** Штатный bulletin Telegram: своей вёрстки у сообщений мода нет. */
