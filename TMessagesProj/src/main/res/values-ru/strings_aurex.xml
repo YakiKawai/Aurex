@@ -53,6 +53,11 @@
     <string name="AurexLocalPremiumHeader">Telegram Premium</string>
     <string name="AurexLocalPremium">Локальный Premium</string>
     <string name="AurexLocalPremiumInfo">Включает интерфейс Premium на этом устройстве: снимаются ограничения на количество папок, длину описания и подписей, число реакций и премиум-стикеры. Сервер по-прежнему видит обычный аккаунт, поэтому всё, что он проверяет на своей стороне, остаётся недоступным.</string>
+    <string name="AurexLocalGiftsHeader">Подарки</string>
+    <string name="AurexLocalGifts">Локальные подарки</string>
+    <string name="AurexLocalGiftsInfo">Подарки отправляются через обычные экраны Telegram, но сам подарок создаётся только на этом устройстве, а его стоимость списывается с локального баланса выше. Реальные Telegram Stars при этом не читаются, не списываются и не резервируются, а перейти к покупке звёзд из этого режима невозможно. Выключение функции убирает локальный баланс и все локальные подарки.</string>
+    <string name="AurexLocalGiftsNotEnough">Недостаточно локальных звёзд. Сдвиньте ползунок, чтобы начислить их снова.</string>
+    <string name="AurexLocalGiftsLocalOnly">Этот подарок есть только на этом устройстве, поэтому действие недоступно.</string>
 
     <string name="AurexProfileBackground">Установить фон</string>
     <string name="AurexProfileBackgroundChange">Изменить фон</string>
