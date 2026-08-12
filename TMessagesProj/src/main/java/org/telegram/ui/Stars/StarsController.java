@@ -170,6 +170,11 @@ public class StarsController {
     }
 
     public TL_stars.StarsAmount getBalance(boolean withMinus, Runnable loaded, boolean force) {
+        // AUREX >>> локальные подарки: баланс из локального кошелька
+        if (org.aurex.core.AurexHooks.hasLocalStars(currentAccount, ton)) {
+            return org.aurex.core.AurexHooks.localStarsBalance(currentAccount);
+        }
+        // AUREX <<<
         if ((!balanceLoaded || System.currentTimeMillis() - lastBalanceLoaded > 1000 * 60) && !balanceLoading || force) {
             balanceLoading = true;
             TL_stars.TL_payments_getStarsStatus req = new TL_stars.TL_payments_getStarsStatus();
@@ -274,6 +279,11 @@ public class StarsController {
     }
 
     public boolean balanceAvailable() {
+        // AUREX >>> локальные подарки: локальный кошелёк готов всегда
+        if (org.aurex.core.AurexHooks.hasLocalStars(currentAccount, ton)) {
+            return true;
+        }
+        // AUREX <<<
         return balanceLoaded;
     }
 
@@ -762,6 +772,11 @@ public class StarsController {
         Utilities.Callback2<Boolean, String> whenDone,
         TLRPC.InputPeer purposePeer
     ) {
+        // AUREX >>> локальные подарки: никаких настоящих покупок
+        if (org.aurex.core.AurexHooks.blockStarsPurchase(ton, whenDone)) {
+            return;
+        }
+        // AUREX <<<
         if (activity == null) {
             return;
         }
@@ -2624,6 +2639,11 @@ public class StarsController {
     }
 
     public void buyStarGift(TL_stars.StarGift gift, boolean anonymous, boolean upgraded, long dialogId, TLRPC.TL_textWithEntities text, Utilities.Callback2<Boolean, String> whenDone) {
+        // AUREX >>> локальные подарки: перехват до payment flow
+        if (org.aurex.core.AurexHooks.sendLocalGift(currentAccount, gift, anonymous, upgraded, dialogId, text, whenDone)) {
+            return;
+        }
+        // AUREX <<<
         final Context context = LaunchActivity.instance != null ? LaunchActivity.instance : ApplicationLoader.applicationContext;
         final Theme.ResourcesProvider resourcesProvider = getResourceProvider();
 
@@ -2859,6 +2879,11 @@ public class StarsController {
     }
 
     public void buyResellingGift(TLRPC.TL_payments_paymentFormStarGift form, TL_stars.StarGift gift, long dialogId, Utilities.Callback2<Boolean, String> whenDone) {
+        // AUREX >>> локальные подарки: NFT с витрины перепродажи
+        if (org.aurex.core.AurexHooks.sendLocalResaleGift(currentAccount, form, gift, dialogId, whenDone)) {
+            return;
+        }
+        // AUREX <<<
         final Context context = LaunchActivity.instance != null ? LaunchActivity.instance : ApplicationLoader.applicationContext;
         final Theme.ResourcesProvider resourcesProvider = getResourceProvider();
 
