@@ -2,12 +2,15 @@ package org.aurex.core;
 
 import android.content.Context;
 
+import org.aurex.features.paid.LocalGifts;
 import org.aurex.features.paid.LocalPremium;
 import org.aurex.features.paid.PaidReactions;
 import org.aurex.features.spy.SpyUpdatesObserver;
 import org.aurex.ui.AurexSettingsActivity;
+import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_stars;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 
@@ -113,6 +116,42 @@ public final class AurexHooks {
             return LocalPremium.isLocalPremiumUser(accountId, user);
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    /**
+     * Локальная отправка подарка (функция "Локальные подарки").
+     *
+     * Врезка первой строкой StarsController.buyStarGift(...) — единственной точки,
+     * через которую апстрим отправляет подарки за звёзды. Если функция включена,
+     * реальный payment flow не начинается вообще: инвойс не создаётся,
+     * payments.getPaymentForm и payments.sendStarsForm не вызываются, реальный баланс
+     * Telegram Stars не читается и не изменяется.
+     *
+     * Отличие от остальных методов фасада: при включённой функции возврат true
+     * сохраняется даже при внутренней ошибке мода. Цена ошибки здесь несимметрична:
+     * неотправленный локальный подарок — мелочь, а слисанные настоящие звёзды —
+     * необратимая потеря денег пользователя.
+     *
+     * @return true, если отправка обработана локально и вызывающий код обязан выйти.
+     */
+    public static boolean sendLocalGift(
+            int accountId,
+            TL_stars.StarGift gift,
+            boolean anonymous,
+            boolean upgraded,
+            long dialogId,
+            TLRPC.TL_textWithEntities text,
+            Utilities.Callback2<Boolean, String> whenDone
+    ) {
+        try {
+            return LocalGifts.send(accountId, gift, anonymous, upgraded, dialogId, text, whenDone);
+        } catch (Throwable t) {
+            try {
+                return LocalGifts.isEnabled();
+            } catch (Throwable ignored) {
+                return false;
+            }
         }
     }
 
