@@ -53,6 +53,11 @@
     <string name="AurexLocalPremiumHeader">Telegram Premium</string>
     <string name="AurexLocalPremium">Local Premium</string>
     <string name="AurexLocalPremiumInfo">Unlocks the Premium interface on this device: limits on folders, bio and caption length, the number of reactions and premium stickers are lifted. The server still sees a regular account, so anything it checks on its side stays unavailable.</string>
+    <string name="AurexLocalGiftsHeader">Gifts</string>
+    <string name="AurexLocalGifts">Local gifts</string>
+    <string name="AurexLocalGiftsInfo">Gifts are sent through the usual Telegram screens, but the gift is created on this device only and its price is taken from the local balance above. Your real Telegram Stars are never read, spent or reserved, and buying stars from this mode is not possible. Turning the feature off removes the local balance and all local gifts.</string>
+    <string name="AurexLocalGiftsNotEnough">Not enough local stars. Move the slider to add more.</string>
+    <string name="AurexLocalGiftsLocalOnly">This gift exists on this device only, so the action is unavailable.</string>
 
     <string name="AurexProfileBackground">Set background</string>
     <string name="AurexProfileBackgroundChange">Change background</string>
