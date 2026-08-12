@@ -19,6 +19,9 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.LaunchActivity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Функция «Локальные подарки».
  *
@@ -83,6 +86,9 @@ public final class LocalGifts {
         if (isEnabled() == enabled) {
             return;
         }
+        // Список затронутых диалогов собираем ДО очистки: после неё уже нельзя
+        // узнать, какой именно чат надо перерисовать.
+        final List<Long> affected = dialogsWithGifts();
         AurexFeatures.LOCAL_GIFTS.set(enabled);
         if (enabled) {
             // Включение = полный баланс: расход прошлой сессии не переносится.
@@ -90,7 +96,7 @@ public final class LocalGifts {
         } else {
             LocalGiftsStore.clearAll();
         }
-        notifyFeedChanged(0);
+        notifyFeedChanged(affected);
     }
 
     /** Текущее значение ползунка — оно же полный локальный баланс. */
@@ -249,7 +255,44 @@ public final class LocalGifts {
         });
     }
 
+    /**
+     * Диалоги, в которых есть локальные подарки, по всем аккаунтам.
+     *
+     * Нужно именно списком: лента чата пересобирается только на уведомление про
+     * свой диалог, поэтому при выключении функции надо разослать его по всем
+     * затронутым чатам — иначе подарки остались бы на экране до перезахода.
+     */
+    private static List<Long> dialogsWithGifts() {
+        final List<Long> dialogs = new ArrayList<>();
+        try {
+            for (int accountId = 0; accountId < UserConfig.MAX_ACCOUNT_COUNT; accountId++) {
+                final List<LocalGiftsStore.Entry> entries = LocalGiftsStore.list(accountId);
+                for (int i = 0; i < entries.size(); i++) {
+                    final LocalGiftsStore.Entry entry = entries.get(i);
+                    if (entry != null && entry.dialogId != 0 && !dialogs.contains(entry.dialogId)) {
+                        dialogs.add(entry.dialogId);
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+        return dialogs;
+    }
+
+    private static void notifyFeedChanged(List<Long> dialogIds) {
+        if (dialogIds == null || dialogIds.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < dialogIds.size(); i++) {
+            notifyFeedChanged(dialogIds.get(i));
+        }
+    }
+
     private static void notifyFeedChanged(long dialogId) {
+        if (dialogId == 0) {
+            return;
+        }
         AndroidUtilities.runOnUIThread(() -> {
             for (int accountId = 0; accountId < UserConfig.MAX_ACCOUNT_COUNT; accountId++) {
                 try {
