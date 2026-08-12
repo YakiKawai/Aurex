@@ -120,11 +120,43 @@ public final class AurexHooks {
     }
 
     /**
+     * Есть ли у аккаунта локальный кошелёк звёзд (функция "Локальные подарки").
+     *
+     * Врезки в StarsController.getBalance(...) и StarsController.balanceAvailable():
+     * пока функция включена, штатный интерфейс подарков работает с локальным
+     * остатком вместо настоящего баланса и не ждёт ответа сервера.
+     *
+     * @param ton такой же флаг, как у экземпляра StarsController: для TON всегда false
+     */
+    public static boolean hasLocalStars(int accountId, boolean ton) {
+        try {
+            return LocalGifts.hasWallet(ton);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Локальный остаток звёзд в штатном формате апстрима.
+     *
+     * Вызывать только после {@link #hasLocalStars(int, boolean)}. При ошибке возвращает
+     * ноль, а не настоящий баланс: мод ни при каких условиях не показывает чужое
+     * значение как своё и не даёт потратить то, чего не выдавал.
+     */
+    public static TL_stars.StarsAmount localStarsBalance(int accountId) {
+        try {
+            return LocalGifts.starsBalance(accountId);
+        } catch (Throwable t) {
+            return TL_stars.StarsAmount.ofStars(0);
+        }
+    }
+
+    /**
      * Локальная отправка подарка (функция "Локальные подарки").
      *
      * Врезка первой строкой StarsController.buyStarGift(...) — единственной точки,
-     * через которую апстрим отправляет подарки за звёзды. Если функция включена,
-     * реальный payment flow не начинается вообще: инвойс не создаётся,
+     * через которую апстрим отправляет обычные подарки за звёзды. Если функция
+     * включена, реальный payment flow не начинается вообще: инвойс не создаётся,
      * payments.getPaymentForm и payments.sendStarsForm не вызываются, реальный баланс
      * Telegram Stars не читается и не изменяется.
      *
@@ -149,6 +181,57 @@ public final class AurexHooks {
         } catch (Throwable t) {
             try {
                 return LocalGifts.isEnabled();
+            } catch (Throwable ignored) {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Локальная покупка NFT с витрины перепродажи (функция "Локальные подарки").
+     *
+     * Врезка первой строкой StarsController.buyResellingGift(...). Нужна отдельно от
+     * {@link #sendLocalGift}: уникальные подарки покупаются другим методом апстрима и
+     * через buyStarGift не проходят вообще.
+     *
+     * Отказоустойчивость такая же: при включённой функции управление не возвращается
+     * в реальную покупку ни при каких ошибках.
+     */
+    public static boolean sendLocalResaleGift(
+            int accountId,
+            TLRPC.TL_payments_paymentFormStarGift form,
+            TL_stars.StarGift gift,
+            long dialogId,
+            Utilities.Callback2<Boolean, String> whenDone
+    ) {
+        try {
+            return LocalGifts.sendResale(accountId, form, gift, dialogId, whenDone);
+        } catch (Throwable t) {
+            try {
+                return LocalGifts.isEnabled();
+            } catch (Throwable ignored) {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Запрет покупки настоящих звёзд, пока включены локальные подарки.
+     *
+     * Врезка первой строкой StarsController.buy(...) — единственной точки, из которой
+     * апстрим открывает оплату через Google Play. Пока режим включён, пользователь не
+     * должен иметь возможности случайно купить звёзды за настоящие деньги из
+     * шторки "не хватает звёзд", которая открылась поверх локального баланса.
+     *
+     * @param ton такой же флаг, как у экземпляра StarsController
+     * @return true, если покупку нужно отменить и вызывающий код обязан выйти
+     */
+    public static boolean blockStarsPurchase(boolean ton, Utilities.Callback2<Boolean, String> whenDone) {
+        try {
+            return LocalGifts.blockRealPurchase(ton, whenDone);
+        } catch (Throwable t) {
+            try {
+                return LocalGifts.isEnabled() && !ton;
             } catch (Throwable ignored) {
                 return false;
             }
