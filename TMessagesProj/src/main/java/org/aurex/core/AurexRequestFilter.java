@@ -1,6 +1,7 @@
 package org.aurex.core;
 
 import org.aurex.features.ghost.GhostRequestFilter;
+import org.aurex.features.paid.LocalGifts;
 import org.aurex.features.paid.PaidReactions;
 import org.telegram.tgnet.TLObject;
 
@@ -34,6 +35,14 @@ public final class AurexRequestFilter {
             return true;
         }
         if (PaidReactions.shouldDropRequest(request)) {
+            return true;
+        }
+        // Локальные подарки перехватываются гораздо раньше — в точке нажатия "Отправить",
+        // до создания инвойса. Эта проверка — последний рубеж на случай, если в новой
+        // версии Telegram появится ещё один путь отправки подарка, о котором мод не
+        // знает: реальное списание звёзд за подарок не должно случиться ни при каких
+        // обстоятельствах, пока функция включена.
+        if (LocalGifts.shouldDropRequest(request)) {
             return true;
         }
         return false;
