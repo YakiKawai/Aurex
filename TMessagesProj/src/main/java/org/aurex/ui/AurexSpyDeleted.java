@@ -1,148 +1,81 @@
 package org.aurex.ui;
 
-import org.aurex.features.spy.SpyChatMerger;
-import org.aurex.features.spy.SpyNotifications;
-import org.telegram.messenger.FileLog;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.NotificationCenter;
-import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.ChatActivity;
-import org.telegram.ui.Components.BulletinFactory;
 
 import java.util.List;
 
 /**
- * Фасад «Режима шпиона» для ленты чата.
+ * Точка входа для врезок в {@code ChatActivity}.
  *
- * Единственная точка, к которой обращаются врезки в {@code ChatActivity}.
- * Все методы безопасны: любая внутренняя ошибка логируется и проглатывается,
- * поведение штатного клиента при этом не меняется.
+ * ЛОГИКИ ЗДЕСЬ БОЛЬШЕ НЕТ — всё переехало в {@link AurexChatFeed}, который
+ * сводит в ленте чата все функции мода сразу (режим шпиона и локальные
+ * подарки).
+ *
+ * ПОЧЕМУ КЛАСС НЕ ПЕРЕИМЕНОВАН И НЕ УДАЛЁН. На его имя ссылаются шесть
+ * уже существующих врезок в {@code ChatActivity} (см. docs/PATCHES-SPY-CHAT.md).
+ * Переименование означало бы правку шести мест в самом часто обновляемом
+ * файле Telegram без единого выигрыша для пользователя, а каждая правка
+ * апстрима — это будущий конфликт при обновлении на новую версию Telegram.
+ *
+ * Имена методов тоже сохранены дословно и по той же причине, хотя два из них
+ * теперы шире своего названия (см. комментарии к ним).
  */
 public final class AurexSpyDeleted {
 
     private AurexSpyDeleted() {
     }
 
-    /**
-     * Чат открыт: подписываемся на события модуля и начинаем учёт подмешанных
-     * сообщений заново.
-     */
+    /** Врезка в {@code onFragmentCreate()}. */
     public static void onChatOpen(int accountId, long dialogId, NotificationCenter.NotificationCenterDelegate delegate) {
-        try {
-            SpyChatMerger.openSession(dialogId);
-            final NotificationCenter center = NotificationCenter.getInstance(accountId);
-            center.addObserver(delegate, SpyNotifications.MESSAGE_EDITED);
-            center.addObserver(delegate, SpyNotifications.MESSAGES_DELETED);
-        } catch (Throwable e) {
-            FileLog.e(e);
-        }
+        AurexChatFeed.onChatOpen(accountId, dialogId, delegate);
     }
 
-    /** Чат закрыт: снимаем подписку и освобождаем учёт. */
+    /** Врезка в {@code onFragmentDestroy()}. */
     public static void onChatClose(int accountId, long dialogId, NotificationCenter.NotificationCenterDelegate delegate) {
-        try {
-            final NotificationCenter center = NotificationCenter.getInstance(accountId);
-            center.removeObserver(delegate, SpyNotifications.MESSAGE_EDITED);
-            center.removeObserver(delegate, SpyNotifications.MESSAGES_DELETED);
-            SpyChatMerger.closeSession(dialogId);
-        } catch (Throwable e) {
-            FileLog.e(e);
-        }
+        AurexChatFeed.onChatClose(accountId, dialogId, delegate);
     }
 
-    /**
-     * Подмешивает удалённые сообщения в список сообщений чата.
-     *
-     * Вызывается и для только что загруженной порции истории, и для живой
-     * ленты, когда сообщение удалили при открытом чате. Всю дальнейшую
-     * бухгалтерию (словари сообщений, группы, даты, верстка) делает штатный
-     * код Telegram.
-     *
-     * @return true, если было добавлено хотя бы одно сообщение
-     */
+    /** Врезки в {@code messagesDidLoad} и {@code didReceivedNotification}. */
     public static boolean merge(int accountId, long dialogId, long topicId, List<MessageObject> messages) {
-        try {
-            return SpyChatMerger.merge(accountId, dialogId, topicId, messages) > 0;
-        } catch (Throwable e) {
-            FileLog.e(e);
-            return false;
-        }
+        return AurexChatFeed.merge(accountId, dialogId, topicId, messages);
     }
 
-    /**
-     * Восстановлено ли сообщение модулем (на сервере его больше нет).
-     */
+    /** Восстановлено ли сообщение режимом шпиона. */
     public static boolean isRestored(MessageObject object) {
-        try {
-            return SpyChatMerger.isRestored(object);
-        } catch (Throwable e) {
-            FileLog.e(e);
-            return false;
-        }
+        return AurexChatFeed.isRestored(object);
     }
 
-    /**
-     * Прозрачность сообщения в ленте: восстановленное рисуется приглушённым,
-     * чтобы его было видно с первого взгляда.
-     */
+    /** Врезка в {@code ChatActivityAdapter.onBindViewHolder}. */
     public static float alphaFor(MessageObject object) {
-        try {
-            return isRestored(object) ? SpyChatMerger.RESTORED_ALPHA : 1f;
-        } catch (Throwable e) {
-            FileLog.e(e);
-            return 1f;
-        }
+        return AurexChatFeed.alphaFor(object);
     }
 
-    /**
-     * Нужно ли заблокировать действие контекстного меню.
-     *
-     * Сообщения, восстановленные из локальной базы, на сервере не существуют.
-     * Любое сетевое действие над ними (ответить, переслать, закрепить,
-     * реакция, удалить) вернуло бы ошибку или сработало бы непредсказуемо,
-     * поэтому вместо ошибки сервера пользователь видит понятное объяснение.
-     *
-     * @return true, если вызывающая сторона должна прервать обработку
-     */
+    /** Врезка в {@code processSelectedOption}. */
     public static boolean blockAction(BaseFragment fragment, MessageObject object, int option) {
-        try {
-            if (!isRestored(object) || isLocalOption(option)) {
-                return false;
-            }
-            if (fragment != null) {
-                BulletinFactory.of(fragment)
-                        .createErrorBulletin(LocaleController.getString(R.string.AurexSpyDeletedActionUnavailable))
-                        .show();
-            }
-            return true;
-        } catch (Throwable e) {
-            FileLog.e(e);
-            return false;
-        }
+        return AurexChatFeed.blockAction(fragment, object, option);
     }
 
     /**
-     * Действия, которые полностью локальны и потому разрешены.
+     * Требует ли уведомление пересборки ленты чата.
+     *
+     * Имя осталось с тех времён, когда такие уведомления приходили только об
+     * удалённых сообщениях. Сейчас сюда же попадает изменение состава
+     * локальных подарков: врезка в апстриме в обоих случаях делает ровно то,
+     * что нужно — пересобирает ленту своего диалога.
      */
-    private static boolean isLocalOption(int option) {
-        return option == ChatActivity.OPTION_COPY
-                || option == ChatActivity.OPTION_SHARE
-                || option == ChatActivity.OPTION_SAVE_TO_GALLERY
-                || option == ChatActivity.OPTION_SAVE_TO_GALLERY2
-                || option == ChatActivity.OPTION_SAVE_TO_DOWNLOADS_OR_MUSIC
-                || option == ChatActivity.OPTION_TRANSLATE
-                || option == AurexSpyChat.OPTION_SPY_HISTORY;
-    }
-
-    /** Уведомление о том, что модуль сохранил удалённые сообщения диалога. */
     public static boolean isDeletedNotification(int id) {
-        return id == SpyNotifications.MESSAGES_DELETED;
+        return AurexChatFeed.isRebuildNotification(id);
     }
 
-    /** Относится ли уведомление к модулю. */
+    /**
+     * Наше ли это уведомление (апстриму его обрабатывать не надо).
+     *
+     * Как и выше, имя шире смысла: сюда входят все уведомления мода, а не
+     * только события режима шпиона.
+     */
     public static boolean isSpyNotification(int id) {
-        return id == SpyNotifications.MESSAGE_EDITED || id == SpyNotifications.MESSAGES_DELETED;
+        return AurexChatFeed.isFeedNotification(id);
     }
 }
